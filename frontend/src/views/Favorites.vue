@@ -2,15 +2,11 @@
   <div>
     <h2 style="margin: 0 0 12px">个人收藏夹 / 列表页</h2>
 
-    <el-alert
-      title="说明：当前页面先做演示用的本地列表（你后续可对接后端 Favorite 表，做真实的收藏列表接口）"
-      type="info"
-      show-icon
-      :closable="false"
-      style="margin-bottom: 12px"
-    />
-
     <el-card>
+      <el-row justify="space-between" align="middle" style="margin-bottom: 12px">
+        <el-col style="color: #666; font-size: 13px">需要登录后才能看到你的收藏</el-col>
+        <el-col><el-button @click="reload">刷新</el-button></el-col>
+      </el-row>
       <el-empty v-if="items.length === 0" description="暂无收藏（先去电影详情页点收藏试试）" />
       <el-table v-else :data="items" style="width: 100%">
         <el-table-column prop="id" label="ID" width="80" />
@@ -27,18 +23,28 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
+import { ElMessage } from "element-plus";
 
-// 演示：本地假数据（你后续改成从后端拉取）
-const items = ref([
-  { id: 1, title: "Interstellar", release_year: 2014 },
-  { id: 2, title: "Inception", release_year: 2010 }
-]);
+import { apiUserFavorites } from "../api/user";
+import { apiToggleFavorite } from "../api/actions";
 
-function remove(id) {
-  items.value = items.value.filter((x) => x.id !== id);
+const items = ref([]);
+
+async function reload() {
+  const resp = await apiUserFavorites();
+  items.value = resp?.data?.items || [];
 }
+
+async function remove(id) {
+  await apiToggleFavorite({ movie_id: id, favorite: false });
+  ElMessage.success("已移除");
+  await reload();
+}
+
+onMounted(reload);
 </script>
+
 
 
 

@@ -12,5 +12,14 @@ export function apiProfile() {
   return http.get("/user/profile");
 }
 
+export function apiUserFavorites() {
+  return http.get("/user/favorites");
+}
+
+export function apiUserRatings() {
+  return http.get("/user/ratings");
+}
+
+
 
 

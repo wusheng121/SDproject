@@ -118,3 +118,5 @@ class Rating(db.Model, TimestampMixin):
 
 
 
+
+

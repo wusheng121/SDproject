@@ -31,6 +31,25 @@ python app.py
 python -m seed.seed_demo
 ```
 
+导入真实电影数据（推荐 MovieLens）
+
+- 先看说明：`data/README.md`
+- 然后导入（在 backend 目录下执行）：
+
+```bash
+python -m seed.import_movielens --movies ..\data\movies.csv
+```
+
+补全电影数据（简介/海报/演员，使用 TMDB）
+
+- 你需要先去 TMDB 申请 API Key（免费即可）：`https://www.themoviedb.org/settings/api`
+- PowerShell 设置环境变量（在 backend 目录下执行）：
+
+```bash
+$env:TMDB_API_KEY="你的key"
+python -m seed.enrich_tmdb --limit 200
+```
+
 ### 2) 启动前端（Vue 3 + Vite）
 
 进入前端目录并安装依赖：

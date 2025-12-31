@@ -7,6 +7,7 @@ import Register from "../views/Register.vue";
 import Login from "../views/Login.vue";
 import Favorites from "../views/Favorites.vue";
 import Rate from "../views/Rate.vue";
+import MyRatings from "../views/MyRatings.vue";
 
 const routes = [
   { path: "/", name: "Home", component: Home },
@@ -14,8 +15,9 @@ const routes = [
   { path: "/movies/:id", name: "MovieInfo", component: MovieInfo, props: true },
   { path: "/register", name: "Register", component: Register },
   { path: "/login", name: "Login", component: Login },
-  { path: "/favorites", name: "Favorites", component: Favorites },
-  { path: "/rate", name: "Rate", component: Rate }
+  { path: "/favorites", name: "Favorites", component: Favorites, meta: { requiresAuth: true } },
+  { path: "/rate", name: "Rate", component: Rate, meta: { requiresAuth: true } },
+  { path: "/my-ratings", name: "MyRatings", component: MyRatings, meta: { requiresAuth: true } }
 ];
 
 const router = createRouter({
@@ -24,6 +26,15 @@ const router = createRouter({
 });
 
 export default router;
+
+router.beforeEach((to) => {
+  if (to.meta?.requiresAuth) {
+    const token = localStorage.getItem("token");
+    if (!token) return { path: "/login" };
+  }
+  return true;
+});
+
 
 
 

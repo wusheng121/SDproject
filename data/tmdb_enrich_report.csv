@@ -1,0 +1,200 @@
+movie_id,title,release_year,status,reason,tmdb_id,tmdb_title,tmdb_release_date,language
+3,Grumpier Old Men,1995,no_change,,15602,斗气老顽�?,1995/12/22,zh-CN
+26,Othello,1995,no_change,,16420,奥赛�?1995-12-15,zh-CN,
+30,Shanghai Triad (Yao a yao yao dao waipo qiao),1995,no_match,search returned empty,,,,
+32,Twelve Monkeys (a.k.a. 12 Monkeys),1995,no_match,search returned empty,,,,
+47,Seven (a.k.a. Se7en),1995,no_match,search returned empty,,,,
+54,"Big Green, The",1995,no_change,,26441,The Big Green,1995/9/29,zh-CN
+58,"Postman, The (Postino, Il)",1994,updated,,11010,邮差,1994/9/22,zh-CN
+60,"Indian in the Cupboard, The",1995,updated,,11359,魔柜小奇�?1995-07-14,zh-CN,
+61,Eye for an Eye,1996,updated,,17182,以血还血,1996/1/12,zh-CN
+62,Mr. Holland's Opus,1995,updated,,2054,生命因你动听,1995/12/29,zh-CN
+63,Don't Be a Menace to South Central While Drinking Your Juice in the Hood,1996,updated,,10607,笑枪走火,1996/1/12,zh-CN
+64,Two if by Sea,1996,updated,,19760,偷心计划,1996/1/12,zh-CN
+65,Bio-Dome,1996,updated,,9536,抓狂双宝,1996/1/12,zh-CN
+66,Lawnmower Man 2: Beyond Cyberspace,1996,updated,,11525,天才除草�?,1996/1/12,zh-CN
+68,French Twist (Gazon maudit),1995,updated,,4482,我的心里只有你没有他,1995/1/18,zh-CN
+69,Friday,1995,updated,,10634,星期�?1995-04-26,zh-CN,
+70,From Dusk Till Dawn,1996,updated,,755,杀出个黎明,1996/1/19,zh-CN
+71,Fair Game,1995,updated,,11859,挑逗性游�?1995-11-03,zh-CN,
+72,Kicking and Screaming,1995,updated,,28387,疯狂二十年华,1995/10/6,zh-CN
+73,"Misérables, Les",1995,updated,,48750,悲惨世界,1995/3/22,zh-CN
+74,Bed of Roses,1996,updated,,20927,玫瑰花床,1996/1/26,zh-CN
+75,Big Bully,1996,updated,,36929,爱情特效�?1996-01-26,zh-CN,
+76,Screamers,1995,updated,,9102,异形终结,1995/9/8,zh-CN
+77,Nico Icon,1995,updated,,124626,偶像尼可,1995/9/8,zh-CN
+78,"Crossing Guard, The",1995,updated,,27526,72小时魔鬼追杀�?1995-01-26,zh-CN,
+79,"Juror, The",1996,updated,,9623,危险机密,1996/2/2,zh-CN
+80,"White Balloon, The (Badkonake sefid)",1995,updated,,46785,白气�?1995-01-02,zh-CN,
+81,Things to Do in Denver When You're Dead,1995,updated,,400,五个杀手的传说,1995/12/1,zh-CN
+82,Antonia's Line (Antonia),1995,updated,,880,安东尼娅家族,1995/9/21,zh-CN
+83,Once Upon a Time... When We Were Colored,1995,updated,,146599,Once Upon a Time... When We Were Colored,1996/1/26,zh-CN
+85,Angels and Insects,1995,updated,,8447,天使与昆�?1995-09-10,zh-CN,
+86,White Squall,1996,updated,,10534,巨浪,1996/2/2,zh-CN
+87,Dunston Checks In,1996,updated,,17414,小猴当家,1996/1/12,zh-CN
+88,Black Sheep,1996,updated,,13997,黑羊,1996/2/1,zh-CN
+89,Nick of Time,1995,updated,,2086,千钧一�?1995-11-22,zh-CN,
+92,Mary Reilly,1996,updated,,9095,致命化身,1996/2/23,zh-CN
+93,Vampire in Brooklyn,1995,updated,,12158,布鲁克林吸血�?1995-10-26,zh-CN,
+94,Beautiful Girls,1996,updated,,9283,美丽女孩,1996/2/9,zh-CN
+95,Broken Arrow,1996,updated,,9208,断箭,1996/2/9,zh-CN
+96,In the Bleak Midwinter,1995,updated,,40154,演艺事业,1995/9/29,zh-CN
+97,"Hate (Haine, La)",1995,updated,,406,怒火青春,1995/5/31,zh-CN
+99,Heidi Fleiss: Hollywood Madam,1995,updated,,63076,Heidi Fleiss: Hollywood Madam,1995/12/27,zh-CN
+100,City Hall,1996,updated,,11062,市政�?1996-02-16,zh-CN,
+101,Bottle Rocket,1996,updated,,13685,瓶装火箭,1996/2/21,zh-CN
+102,Mr. Wrong,1996,updated,,47475,二见钟情之新好男�?1996-02-16,zh-CN,
+103,Unforgettable,1996,updated,,2045,叠影追凶,1996/2/23,zh-CN
+104,Happy Gilmore,1996,updated,,9614,高尔夫球也疯�?1996-02-16,zh-CN,
+105,"Bridges of Madison County, The",1995,updated,,688,廊桥遗梦,1995/6/2,zh-CN
+106,Nobody Loves Me (Keiner liebt mich),1994,updated,,11907,情来自有�?1994-11-07,zh-CN,
+107,Muppet Treasure Island,1996,updated,,10874,布偶金银岛历险记,1996/2/16,zh-CN
+108,Catwalk,1996,updated,,89333,Catwalk,1995/12/8,zh-CN
+110,Braveheart,1995,updated,,197,勇敢的心,1995/5/24,zh-CN
+111,Taxi Driver,1976,updated,,103,出租车司�?1976-02-09,zh-CN,
+112,Rumble in the Bronx (Hont faan kui),1995,no_match,search returned empty,,,,
+113,Before and After,1996,updated,,43566,天伦�?1996-02-23,zh-CN,
+116,Anne Frank Remembered,1995,updated,,51352,安妮·弗兰克回�?1995-06-08,zh-CN,
+117,"Young Poisoner's Handbook, The",1995,updated,,16934,少年落毒事件�?1995-01-20,zh-CN,
+118,If Lucy Fell,1996,updated,,10324,爱在布鲁克林�?1996-03-08,zh-CN,
+119,"Steal Big, Steal Little",1995,updated,,78406,Steal Big Steal Little,1995/9/29,zh-CN
+121,"Boys of St. Vincent, The",1992,updated,,77840,圣文生男孩II�?5年后,1992/12/7,zh-CN
+122,Boomerang,1992,updated,,11066,情场杀�?1992-06-30,zh-CN,
+123,Chungking Express (Chung Hing sam lam),1994,updated,,11104,重庆森林,1994/7/14,zh-CN
+125,Flirting With Disaster,1996,updated,,2074,与灾难调�?1996-03-22,zh-CN,
+126,"NeverEnding Story III, The",1994,updated,,27793,大魔�?：飞进未�?1994-10-26,zh-CN,
+128,Jupiter's Wife,1994,updated,,290157,Jupiter's Wife,1995/9/8,zh-CN
+129,Pie in the Sky,1996,updated,,110972,Pie in the Sky,1996/2/9,zh-CN
+132,Jade,1995,updated,,11863,玉焰,1995/10/13,zh-CN
+135,Down Periscope,1996,updated,,9101,潜水艇老爷�?1996-03-01,zh-CN,
+137,Man of the Year,1995,updated,,5757,Man of the Year,1995/9/15,zh-CN
+140,Up Close and Personal,1996,updated,,9302,因为你爱过我,1996/3/1,zh-CN
+141,"Birdcage, The",1996,updated,,11000,鸟笼,1996/3/8,zh-CN
+144,"Brothers McMullen, The",1995,updated,,16388,麦克马伦兄弟,1995/8/11,zh-CN
+145,Bad Boys,1995,updated,,9737,绝地战警,1995/4/7,zh-CN
+146,"Amazing Panda Adventure, The",1995,updated,,30765,小猫熊历险记,1995/8/25,zh-CN
+147,"Basketball Diaries, The",1995,updated,,10474,边缘日记,1995/4/21,zh-CN
+148,"Awfully Big Adventure, An",1995,updated,,22279,新爱情乐�?1995-05-11,zh-CN,
+149,Amateur,1994,updated,,30157,业余爱好�?1994-08-05,zh-CN,
+150,Apollo 13,1995,updated,,568,阿波�?3�?1995-06-30,zh-CN,
+151,Rob Roy,1995,updated,,11780,赤胆豪情,1995/4/13,zh-CN
+152,"Addiction, The",1995,updated,,34996,夜瘾,1995/10/6,zh-CN
+153,Batman Forever,1995,updated,,414,永远的蝙蝠侠,1995/6/16,zh-CN
+154,Beauty of the Day (Belle de jour),1967,updated,,649,白日美人,1967/5/24,zh-CN
+155,Beyond Rangoon,1995,updated,,1873,远东之旅,1995/8/25,zh-CN
+156,Blue in the Face,1995,updated,,5894,烟变奏之吐尽心中�?1995-09-15,zh-CN,
+157,Canadian Bacon,1995,updated,,1775,反转加拿�?1995-06-08,zh-CN,
+158,Casper,1995,updated,,8839,鬼马小精�?1995-05-26,zh-CN,
+159,Clockers,1995,updated,,20649,黑街追辑�?1995-09-15,zh-CN,
+160,Congo,1995,updated,,10329,刚果惊魂,1995/6/9,zh-CN
+161,Crimson Tide,1995,updated,,8963,红潮风暴,1995/5/12,zh-CN
+162,Crumb,1994,updated,,26564,克鲁�?1994-09-10,zh-CN,
+163,Desperado,1995,updated,,8068,杀人三步曲,1995/8/25,zh-CN
+164,Devil in a Blue Dress,1995,updated,,8512,蓝衣魔鬼,1995/9/29,zh-CN
+165,Die Hard: With a Vengeance,1995,updated,,1572,虎胆龙威3,1995/5/19,zh-CN
+166,"Doom Generation, The",1995,updated,,13552,玩尽末世�?1995-10-20,zh-CN,
+168,First Knight,1995,updated,,6520,第一武士,1995/7/7,zh-CN
+169,Free Willy 2: The Adventure Home,1995,updated,,9073,人鱼童话2,1995/7/19,zh-CN
+170,Hackers,1995,updated,,10428,黑客,1995/9/14,zh-CN
+171,Jeffrey,1995,updated,,17447,你爱�?1995-08-18,zh-CN,
+172,Johnny Mnemonic,1995,updated,,9886,捍卫机密,1995/5/26,zh-CN
+173,Judge Dredd,1995,updated,,9482,特警判官,1995/6/30,zh-CN
+174,Jury Duty,1995,updated,,19326,乌龙陪审�?1995-04-12,zh-CN,
+175,Kids,1995,updated,,9344,半熟少年,1995/7/28,zh-CN
+176,Living in Oblivion,1995,updated,,9071,开麦拉狂想�?1995-07-21,zh-CN,
+177,Lord of Illusions,1995,updated,,8973,梦幻杀人档�?1995-08-25,zh-CN,
+178,Love & Human Remains,1993,updated,,15730,爱欲残骸,1994/7/22,zh-CN
+179,Mad Love,1995,updated,,47608,爱你情深,1995/5/26,zh-CN
+180,Mallrats,1995,updated,,2293,耍酷一�?1995-10-20,zh-CN,
+181,Mighty Morphin Power Rangers: The Movie,1995,updated,,9070,美版恐龙战队 电影�?1995-06-30,zh-CN,
+183,Mute Witness,1994,updated,,48787,无声言�?1995-09-15,zh-CN,
+184,Nadja,1994,updated,,34574,嗜血轮回,1995/9/1,zh-CN
+185,"Net, The",1995,updated,,1642,网络惊魂,1995/7/28,zh-CN
+186,Nine Months,1995,updated,,11472,怀胎九�?1995-07-12,zh-CN,
+187,Party Girl,1995,updated,,36196,派对女郎,1995/6/9,zh-CN
+188,"Prophecy, The",1995,updated,,11980,魔翼杀�?1995-08-05,zh-CN,
+189,Reckless,1995,updated,,58372,Reckless,1995/11/17,zh-CN
+190,Safe,1995,updated,,32646,安然无恙,1995/6/23,zh-CN
+191,"Scarlet Letter, The",1995,updated,,10533,红字,1995/10/13,zh-CN
+193,Showgirls,1995,updated,,10802,艳舞女郎,1995/9/22,zh-CN
+194,Smoke,1995,updated,,10149,�?1995-06-09,zh-CN,
+195,Something to Talk About,1995,updated,,18402,爱情魔力,1995/8/4,zh-CN
+196,Species,1995,updated,,9348,异种,1995/7/7,zh-CN
+198,Strange Days,1995,updated,,281,末世纪暴�?1995-10-13,zh-CN,
+199,"Umbrellas of Cherbourg, The (Parapluies de Cherbourg, Les)",1964,updated,,5967,瑟堡的雨�?1964-02-19,zh-CN,
+201,Three Wishes,1995,updated,,47939,三个愿望,1995/10/27,zh-CN
+202,Total Eclipse,1995,updated,,36834,心之全蚀,1995/11/3,zh-CN
+203,"To Wong Foo, Thanks for Everything! Julie Newmar",1995,updated,,9090,艳倒群�?1995-09-08,zh-CN,
+204,Under Siege 2: Dark Territory,1995,updated,,3512,潜龙轰天2：黑暗领�?1995-07-13,zh-CN,
+205,Unstrung Heroes,1995,updated,,52856,Unstrung Heroes,1995/9/15,zh-CN
+206,Unzipped,1995,updated,,77350,拉链拉下�?1995-08-11,zh-CN,
+207,"Walk in the Clouds, A",1995,updated,,9560,云中漫步,1995/5/27,zh-CN
+208,Waterworld,1995,updated,,9804,未来水世�?1995-07-28,zh-CN,
+209,White Man's Burden,1995,updated,,31611,White Man's Burden,1995/12/1,zh-CN
+210,Wild Bill,1995,updated,,65796,西域枪神,1995/12/1,zh-CN
+211,"Browning Version, The",1994,updated,,49805,布朗宁版�?1994-06-08,zh-CN,
+213,Burnt by the Sun (Utomlyonnye solntsem),1994,updated,,50797,烈日灼人,1994/5/1,zh-CN
+214,Before the Rain (Pred dozhdot),1994,updated,,19155,暴雨将至,1994/6/9,zh-CN
+215,Before Sunrise,1995,updated,,76,爱在黎明破晓�?1995-01-27,zh-CN,
+216,Billy Madison,1995,updated,,11017,阿呆闯学�?1995-02-10,zh-CN,
+217,"Babysitter, The",1995,updated,,37141,风骚小保�?1995-10-17,zh-CN,
+218,Boys on the Side,1995,updated,,9382,潇洒有情�?1995-02-03,zh-CN,
+219,"Cure, The",1995,updated,,6715,鳄鱼波鞋走天�?1995-04-21,zh-CN,
+220,Castle Freak,1995,updated,,18256,衰落的城�?1996-04-20,zh-CN,
+222,Circle of Friends,1995,updated,,22625,朋友�?1995-04-07,zh-CN,
+223,Clerks,1994,updated,,2292,疯狂店员,1994/10/19,zh-CN
+224,Don Juan DeMarco,1995,updated,,1909,天生爱情�?1994-10-12,zh-CN,
+225,Disclosure,1994,updated,,8984,桃色机密,1994/12/9,zh-CN
+227,Drop Zone,1994,updated,,4954,终极特区,1994/12/8,zh-CN
+228,Destiny Turns on the Radio,1995,updated,,62488,Destiny Turns on the Radio,1995/4/28,zh-CN
+229,Death and the Maiden,1994,updated,,10531,不道德的审判,1994/5/4,zh-CN
+230,Dolores Claiborne,1995,updated,,11929,热泪伤痕,1995/3/24,zh-CN
+231,Dumb & Dumber (Dumb and Dumber),1994,updated,,8467,阿呆与阿�?1994-12-16,zh-CN,
+232,Eat Drink Man Woman (Yin shi nan nu),1994,updated,,10451,饮食男女,1994/8/3,zh-CN
+233,Exotica,1994,updated,,20156,色情酒店,1994/9/29,zh-CN
+234,Exit to Eden,1994,updated,,18395,勇闯快活�?1994-10-14,zh-CN,
+235,Ed Wood,1994,updated,,522,艾德·伍德,1994/9/30,zh-CN
+236,French Kiss,1995,updated,,397,情定巴黎,1995/5/5,zh-CN
+237,Forget Paris,1995,updated,,10525,忘情巴黎,1995/5/19,zh-CN
+238,Far From Home: The Adventures of Yellow Dog,1995,updated,,27985,小黄历险�?1995-01-13,zh-CN,
+239,"Goofy Movie, A",1995,updated,,15789,高飞大电�?1995-04-07,zh-CN,
+240,Hideaway,1995,updated,,27303,来自阴阳�?1995-03-03,zh-CN,
+241,Fluke,1995,updated,,21183,再世人狗�?1995-06-02,zh-CN,
+242,Farinelli: il castrato,1994,updated,,10954,绝代妖姬,1994/12/1,zh-CN
+243,Gordy,1995,updated,,47867,Gordy,1995/5/12,zh-CN
+246,Hoop Dreams,1994,updated,,14275,篮球�?1994-09-12,zh-CN,
+247,Heavenly Creatures,1994,updated,,1024,罪孽天使,1994/9/12,zh-CN
+248,Houseguest,1994,updated,,17207,家有贵客糗事�?1995-01-06,zh-CN,
+249,Immortal Beloved,1994,updated,,13701,不朽真情,1994/12/16,zh-CN
+250,Heavyweights (Heavy Weights),1995,updated,,14819,魔鬼特训�?1995-02-17,zh-CN,
+251,"Hunted, The",1995,updated,,32631,黑色追杀�?1995-02-24,zh-CN,
+252,I.Q.,1994,updated,,11777,爱神有约,1994/12/24,zh-CN
+253,Interview with the Vampire: The Vampire Chronicles,1994,updated,,628,夜访吸血�?1994-11-11,zh-CN,
+254,Jefferson in Paris,1995,updated,,87729,总统的秘密情�?1995-03-31,zh-CN,
+255,"Jerky Boys, The",1995,updated,,18713,捣蛋双宝,1995/2/3,zh-CN
+256,Junior,1994,updated,,6280,魔鬼二世,1994/11/22,zh-CN
+257,Just Cause,1995,updated,,9061,正当防卫,1995/2/17,zh-CN
+258,"Kid in King Arthur's Court, A",1995,updated,,37108,神气威龙,1995/8/11,zh-CN
+259,Kiss of Death,1995,updated,,6071,致命布局,1995/4/21,zh-CN
+260,Star Wars: Episode IV - A New Hope,1977,updated,,11,星球大战4：新希望,1977/5/25,zh-CN
+261,Little Women,1994,updated,,9587,小妇�?1994-12-21,zh-CN,
+262,"Little Princess, A",1995,updated,,19101,小公�?1995-05-10,zh-CN,
+263,Ladybird Ladybird,1994,updated,,49980,折翼母亲,1994/2/18,zh-CN
+265,Like Water for Chocolate (Como agua para chocolate),1992,updated,,18183,巧克力情�?1992-04-16,zh-CN,
+266,Legends of the Fall,1994,updated,,4476,燃情岁月,1994/12/23,zh-CN
+267,Major Payne,1995,updated,,11008,派恩少校,1995/3/24,zh-CN
+269,My Crazy Life (Mi vida loca),1993,updated,,32325,Mi Vida Loca,1994/6/8,zh-CN
+270,Love Affair,1994,updated,,43742,爱情事件,1994/10/21,zh-CN
+271,Losing Isaiah,1995,updated,,28313,生母养母的战�?1995-03-17,zh-CN,
+272,"Madness of King George, The",1994,updated,,11318,疯狂的乔治王,1994/12/28,zh-CN
+273,Mary Shelley's Frankenstein (Frankenstein),1994,updated,,3036,科学怪人,1994/11/4,zh-CN
+274,Man of the House,1995,updated,,40490,犬父虎子,1995/3/3,zh-CN
+275,Mixed Nuts,1994,updated,,24070,Mixed Nuts,1994/12/21,zh-CN
+276,Milk Money,1994,updated,,8986,情迷V女郎,1994/8/31,zh-CN
+277,Miracle on 34th Street,1994,updated,,10510,34街的奇迹,1994/11/18,zh-CN
+278,Miami Rhapsody,1995,updated,,17402,桃色第三�?1995-01-27,zh-CN,
+279,My Family,1995,updated,,38722,My Family,1995/5/3,zh-CN
+280,Murder in the First,1995,updated,,8438,一级谋杀,1995/1/20,zh-CN
+281,Nobody's Fool,1994,updated,,11593,大智若愚,1994/12/23,zh-CN
+282,Nell,1994,updated,,1945,大地的女�?1994-12-23,zh-CN,
+283,New Jersey Drive,1995,updated,,39310,New Jersey Drive,1995/4/19,zh-CN

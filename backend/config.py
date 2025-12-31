@@ -16,5 +16,9 @@ class Config:
     JWT_ALG = "HS256"
     JWT_EXPIRE_SECONDS = int(os.environ.get("JWT_EXPIRE_SECONDS", "86400"))
 
+    # TMDB（用于补全简介/海报/演员）
+    TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "")
+
+
 
 
