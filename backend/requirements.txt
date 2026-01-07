@@ -7,6 +7,10 @@ pandas==2.2.0
 numpy==1.26.4
 requests==2.32.3
 
+# 机器学习/推荐系统依赖
+scikit-learn==1.4.0       # 数据划分、预处理
+scikit-surprise==1.1.3    # 协同过滤/矩阵分解（步骤二会用到）
+
 
 
 

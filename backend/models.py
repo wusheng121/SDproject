@@ -16,9 +16,25 @@ class User(db.Model, TimestampMixin):
     email = db.Column(db.String(120), unique=True, index=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     last_login_at = db.Column(db.DateTime, nullable=True)
+    # 用户兴趣标签（逗号分隔的类型名称，如 "Action,Comedy"；为 NULL 表示未选择）
+    preferred_genres = db.Column(db.Text, nullable=True)
 
     favorites = db.relationship("Favorite", back_populates="user", cascade="all, delete-orphan")
     ratings = db.relationship("Rating", back_populates="user", cascade="all, delete-orphan")
+
+    def get_preferred_genres_list(self):
+        """返回偏好类型列表"""
+        if not self.preferred_genres:
+            return []
+        return [g.strip() for g in self.preferred_genres.split(",") if g.strip()]
+
+    def set_preferred_genres_list(self, genre_list):
+        """设置偏好类型列表"""
+        if not genre_list:
+            # 空数组 = 用户主动跳过，设为空字符串（而非 NULL）
+            self.preferred_genres = ""
+        else:
+            self.preferred_genres = ",".join([g.strip() for g in genre_list if g.strip()])
 
 
 class Movie(db.Model, TimestampMixin):
@@ -115,6 +131,9 @@ class Rating(db.Model, TimestampMixin):
 
     user = db.relationship("User", back_populates="ratings")
     movie = db.relationship("Movie", back_populates="ratings")
+
+
+
 
 
 

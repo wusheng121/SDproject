@@ -1,0 +1,6 @@
+Data Split Metadata
+Created at: 2026-01-02T18:37:35.560152
+Train size: 80668
+Test size: 20168
+Train mean rating: 3.508
+Test mean rating: 3.474

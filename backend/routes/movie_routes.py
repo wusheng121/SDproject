@@ -9,6 +9,32 @@ from utils.response import err, ok
 movie_bp = Blueprint("movie_bp", __name__, url_prefix="/api")
 
 
+def _word_predicates(title: str):
+    """
+    以“单词”为单位做匹配，避免搜索 one 命中 stone。
+    做法：对输入按空白切分，每个词要求命中（AND），单词边界用空格/开头/结尾/常见标点粗略限定。
+    """
+    words = [w.strip().lower() for w in title.split() if w.strip()]
+    preds = []
+    for w in words:
+        # 常见分隔符组合（开头/中间/结尾）
+        patterns = [
+            f"{w}",  # 完全相等
+            f"{w} %",  # 开头
+            f"% {w} %",  # 中间
+            f"% {w}",  # 结尾
+            f"% {w}:%",
+            f"% {w}-%",
+            f"% {w},%",
+            f"% {w}.%",
+            f"% {w}!%",
+            f"% {w}?%",
+            f"% {w}'%",
+        ]
+        preds.append(db.or_(*[func.lower(Movie.title).like(p.lower()) for p in patterns]))
+    return preds
+
+
 @movie_bp.get("/movies")
 def list_movies():
     """
@@ -151,13 +177,17 @@ def movie_detail(movie_id: int):
 @movie_bp.get("/movies/search")
 def search_movies():
     """
-    GET /api/movies/search?q=xxx
+    GET /api/movies/search
+    支持多条件：title / genre / actor（均可选，至少一项非空）
+    多条件采用 AND 交集：例如同时填 title 与 genre，则需同时满足。
     """
-    q = (request.args.get("q") or "").strip()
-    if not q:
-        return ok({"q": q, "items": []})
+    title = (request.args.get("title") or "").strip()
+    genre = (request.args.get("genre") or "").strip()
+    actor = (request.args.get("actor") or "").strip()
+    q = (request.args.get("q") or "").strip()  # 兼容老前端
 
-    like = f"%{q}%"
+    if not any([title, genre, actor, q]):
+        return ok({"items": []})
 
     movie_q = (
         db.session.query(Movie)
@@ -165,18 +195,50 @@ def search_movies():
         .outerjoin(Genre, Genre.id == MovieGenre.genre_id)
         .outerjoin(MovieActor, MovieActor.movie_id == Movie.id)
         .outerjoin(Actor, Actor.id == MovieActor.actor_id)
-        .filter(
-            (Movie.title.ilike(like))
-            | (Genre.name.ilike(like))
-            | (Actor.name.ilike(like))
-        )
-        .distinct()
-        .order_by(Movie.id.desc())
-        .limit(50)
     )
 
+    filters = []
+
+    # 标题：按单词边界匹配，多个词采用 AND（交集）
+    if title:
+        word_preds = _word_predicates(title)
+        if word_preds:
+            filters.append(db.and_(*word_preds))
+
+    # 类型：精确/模糊匹配名称
+    if genre:
+        filters.append(Genre.name.ilike(f"%{genre}%"))
+
+    # 演员：模糊匹配
+    if actor:
+        filters.append(Actor.name.ilike(f"%{actor}%"))
+
+    # 兼容老的 q：如果只有 q，允许它在三处任一匹配；如果还有其他条件，则 q 也要求匹配
+    if q:
+        q_pred = (
+            (Movie.title.ilike(f"%{q}%"))
+            | (Genre.name.ilike(f"%{q}%"))
+            | (Actor.name.ilike(f"%{q}%"))
+        )
+        filters.append(q_pred)
+
+    if filters:
+        movie_q = movie_q.filter(db.and_(*filters))
+
+    movie_q = movie_q.distinct().order_by(Movie.id.desc()).limit(50)
+
     items = [{"id": m.id, "title": m.title, "release_year": m.release_year, "poster_url": m.poster_url} for m in movie_q.all()]
-    return ok({"q": q, "items": items})
+    return ok({"items": items})
+
+
+@movie_bp.get("/genres")
+def list_genres():
+    """
+    GET /api/genres
+    返回所有类型名称列表（供前端下拉选择）
+    """
+    names = [g.name for g in Genre.query.order_by(Genre.name.asc()).all()]
+    return ok({"items": names})
 
 
 

@@ -9,6 +9,20 @@ from utils.response import err, ok
 action_bp = Blueprint("action_bp", __name__, url_prefix="/api")
 
 
+def _get_strategy_info(user):
+    """返回当前使用的推荐策略说明（用于前端展示/调试）"""
+    rating_count = Rating.query.filter_by(user_id=user.id).count()
+    preferred_genres = user.get_preferred_genres_list()
+
+    if not preferred_genres:
+        return {"strategy": "A", "description": "全局热门（无兴趣标签）"}
+    if rating_count == 0:
+        return {"strategy": "B", "description": "基于内容推荐（根据选定类型）"}
+    if rating_count < 10:
+        return {"strategy": "C", "description": f"轻量混合（评分数={rating_count}）"}
+    return {"strategy": "D", "description": f"矩阵分解为主（评分数={rating_count}，待实现）"}
+
+
 @action_bp.post("/action/favorite")
 @login_required
 def toggle_favorite(user):
@@ -92,10 +106,11 @@ def recommendations(user):
     """
     GET /api/recommendations
     query: limit=10
+    分阶段推荐：A(无标签热门)/B(有标签内容)/C(少量行为混合)/D(充足行为矩阵分解)
     """
     limit = int(request.args.get("limit", 10))
-    items = get_recommendations_for_user(user_id=user.id, limit=limit)
-    return ok({"user_id": user.id, "items": items})
+    items = get_recommendations_for_user(user=user, limit=limit)
+    return ok({"user_id": user.id, "items": items, "strategy_info": _get_strategy_info(user)})
 
 
 

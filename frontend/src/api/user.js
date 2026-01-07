@@ -20,6 +20,14 @@ export function apiUserRatings() {
   return http.get("/user/ratings");
 }
 
+export function apiGetPreferences() {
+  return http.get("/user/preferences");
+}
+
+export function apiSavePreferences(genres) {
+  return http.post("/user/preferences", { genres });
+}
+
 
 
 

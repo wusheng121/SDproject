@@ -110,7 +110,7 @@ def list_favorites(user: User):
 def list_my_ratings(user: User):
     """
     GET /api/user/ratings
-    返回当前用户的评分列表（用于“我的评分”页面）
+    返回当前用户的评分列表（用于"我的评分"页面）
     """
     ratings = (
         db.session.query(Rating, Movie)
@@ -131,6 +131,41 @@ def list_my_ratings(user: User):
             }
         )
     return ok({"items": items})
+
+
+@user_bp.get("/user/preferences")
+@login_required
+def get_preferences(user: User):
+    """
+    GET /api/user/preferences
+    获取用户的兴趣标签（类型偏好）
+    """
+    genres = user.get_preferred_genres_list()
+    # has_preference: True 表示用户已经操作过（选择了类型或主动跳过）
+    # NULL = 从未设置, "" = 主动跳过, "xxx,yyy" = 已选择
+    has_preference = user.preferred_genres is not None
+    return ok({"preferred_genres": genres, "has_preference": has_preference})
+
+
+@user_bp.post("/user/preferences")
+@login_required
+def save_preferences(user: User):
+    """
+    POST /api/user/preferences
+    保存/更新用户的兴趣标签
+    body: { genres: ["Action", "Comedy", ...] }
+    """
+    payload = request.get_json(silent=True) or {}
+    genres = payload.get("genres") or []
+
+    if not isinstance(genres, list):
+        return err("genres 必须是数组", code=1201)
+
+    # 允许用户清空偏好（传空数组）或设置偏好
+    user.set_preferred_genres_list(genres)
+    db.session.commit()
+
+    return ok({"preferred_genres": user.get_preferred_genres_list()}, "偏好已保存")
 
 
 

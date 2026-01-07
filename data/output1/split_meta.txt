@@ -1,0 +1,22 @@
+Data Split Metadata (User-based Split)
+Created at: 2026-01-03T10:11:02.450351
+Split method: user-based (避免冷启动)
+Parameters:
+  - test_size: 0.2
+  - min_ratings: 5
+  - random_state: 42
+
+Statistics:
+  Train size: 80896
+  Test size: 19940
+  Train users: 610
+  Test users: 610
+  Train movies: 8974
+  Test movies: 5107
+  Train mean rating: 3.504
+  Test mean rating: 3.492
+
+Cold Start Analysis:
+  Test users in train: 19940/19940 (100.0%)
+  Test movies in train: 19124/19940 (95.9%)
+  Cold start predictions: 816/19940 (4.1%)

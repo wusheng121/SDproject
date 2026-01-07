@@ -3,7 +3,7 @@
     <h2 style="margin: 0 0 12px">我的评分</h2>
     <el-card>
       <el-row justify="space-between" align="middle" style="margin-bottom: 12px">
-        <el-col style="color: #666; font-size: 13px">展示你对电影打过的分（从数据库读取）</el-col>
+        <el-col style="color: #666; font-size: 13px">展示你对电影打过的分</el-col>
         <el-col><el-button @click="reload">刷新</el-button></el-col>
       </el-row>
 
@@ -42,6 +42,19 @@ async function reload() {
 
 onMounted(reload);
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

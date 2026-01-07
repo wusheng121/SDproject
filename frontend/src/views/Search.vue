@@ -4,8 +4,23 @@
 
     <el-card style="margin-bottom: 16px">
       <el-form :inline="true" @submit.prevent>
-        <el-form-item label="关键词">
-          <el-input v-model="q" placeholder="可按标题/类型/演员搜索（mock）" style="width: 360px" @keyup.enter="onSearch" />
+        <el-form-item label="标题">
+          <el-input v-model="form.title" placeholder="可空" style="width: 220px" @keyup.enter="onSearch" />
+        </el-form-item>
+        <el-form-item label="类型">
+          <el-select
+            v-model="form.genre"
+            clearable
+            filterable
+            placeholder="可空，从下拉选择"
+            style="width: 200px"
+            @change="onSearch"
+          >
+            <el-option v-for="g in genres" :key="g" :label="g" :value="g" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="演员">
+          <el-input v-model="form.actor" placeholder="可空，例如 Tom Hanks" style="width: 180px" @keyup.enter="onSearch" />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="onSearch">搜索</el-button>
@@ -26,27 +41,48 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
 
 import MovieCard from "../components/MovieCard.vue";
-import { apiSearchMovies } from "../api/movies";
+import { apiListGenres, apiSearchMovies } from "../api/movies";
 
 const router = useRouter();
 
-const q = ref("");
+const form = reactive({
+  title: "",
+  genre: "",
+  actor: ""
+});
 const results = ref([]);
+const genres = ref([]);
 
 async function onSearch() {
-  const resp = await apiSearchMovies(q.value);
+  if (!form.title && !form.genre && !form.actor) {
+    ElMessage.warning("至少填一项标题/类型/演员");
+    return;
+  }
+  const resp = await apiSearchMovies({ title: form.title, genre: form.genre, actor: form.actor });
   results.value = resp?.data?.items || [];
 }
+
+async function loadGenres() {
+  const resp = await apiListGenres();
+  genres.value = resp?.data?.items || [];
+}
+
+onMounted(() => {
+  loadGenres();
+});
 
 function openMovie(movie) {
   if (!movie?.id) return;
   router.push(`/movies/${movie.id}`);
 }
 </script>
+
+
 
 
 

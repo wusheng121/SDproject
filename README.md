@@ -68,12 +68,39 @@ npm run dev
 说明：
 - 前端已在 `vite.config.js` 配置了 **`/api` 代理**到后端 `http://127.0.0.1:5000`，因此前端请求直接写 `/api/...` 即可。
 
-### 3) 你接下来要做什么（建议顺序）
+### 3) 机器学习模块（矩阵分解推荐系统）
 
-- 完成注册/登录的真实逻辑（JWT / Session 任选其一）
-- 完成 Movie/Genre/Actor 的数据导入（可写 `backend/seed/` 脚本）
-- 把“收藏/评分”写入数据库并联调前端页面
-- 最后补一个简单推荐策略（例如：基于用户评分的 TopN、或基于类型偏好的相似推荐）
+**位置**: `backend/ml/`
+
+**功能**: 基于矩阵分解（Matrix Factorization）的协同过滤推荐，适用于用户有充足行为数据（评分≥10）的场景（策略 D）。
+
+**四步实现流程**:
+
+1. **步骤一：数据准备** ✅（已完成）
+   ```bash
+   cd backend
+   python -m ml.prepare_data --input ..\data\ml-latest-small\ratings.csv --output ..\data\output1\
+   ```
+   生成 `ratings_train.csv` 和 `ratings_test.csv`（训练/测试集）
+
+2. **步骤二：模型训练** ✅（已完成）
+   ```bash
+   python -m ml.train_mf --train ..\data\output1\ratings_train.csv --test ..\data\output1\ratings_test.csv --output ..\data\output2\
+   ```
+   生成 `als_model.pkl`（训练好的 ALS 矩阵分解模型）
+   
+   **测试模型**：
+   ```bash
+   python -m ml.test_model --model ..\data\output2\als_model.pkl
+   ```
+
+3. **步骤三：模型集成** 🚧（待实现）
+   
+4. **步骤四：API 接入** 🚧（待实现）
+
+详细文档：`backend/ml/README.md`
+
+---
 
 ### 4) 学习与开发指南
 
