@@ -12,6 +12,14 @@ export function apiRecommendations(limit = 10) {
   return http.get("/recommendations", { params: { limit } });
 }
 
+export function apiGetMyRatings() {
+  return http.get("/user/ratings");
+}
+
+
+
+
+
 
 
 

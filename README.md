@@ -76,14 +76,14 @@ npm run dev
 
 **四步实现流程**:
 
-1. **步骤一：数据准备** ✅（已完成）
+1. **步骤一：数据准备** 
    ```bash
    cd backend
    python -m ml.prepare_data --input ..\data\ml-latest-small\ratings.csv --output ..\data\output1\
    ```
    生成 `ratings_train.csv` 和 `ratings_test.csv`（训练/测试集）
 
-2. **步骤二：模型训练** ✅（已完成）
+2. **步骤二：模型训练** 
    ```bash
    python -m ml.train_mf --train ..\data\output1\ratings_train.csv --test ..\data\output1\ratings_test.csv --output ..\data\output2\
    ```
@@ -94,16 +94,12 @@ npm run dev
    python -m ml.test_model --model ..\data\output2\als_model.pkl
    ```
 
-3. **步骤三：模型集成** 🚧（待实现）
+3. **步骤三：模型集成** 
    
-4. **步骤四：API 接入** 🚧（待实现）
+4. **步骤四：API 接入** 
 
 详细文档：`backend/ml/README.md`
 
----
 
-### 4) 学习与开发指南
-
-见：`docs/LEARNING_GUIDE.md`
 
 

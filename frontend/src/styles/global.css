@@ -1,0 +1,442 @@
+/* 主题变量定义 */
+:root {
+  /* 日间模式 - 浅色主题（更淡的紫色） */
+  --primary-color: #a8b5ff;
+  --primary-dark: #b8a5e8;
+  --primary-gradient: linear-gradient(135deg, #a8b5ff 0%, #b8a5e8 100%);
+  
+  --bg-primary: linear-gradient(135deg, #e8ecff 0%, #f0ebff 100%);
+  --bg-secondary: rgba(255, 255, 255, 0.95);
+  --bg-card: white;
+  --bg-hover: rgba(168, 181, 255, 0.15);
+  
+  --text-primary: #2c3e50;
+  --text-secondary: #7f8c8d;
+  --text-light: #95a5a6;
+  --text-white: white;
+  
+  --border-color: #e0e0e0;
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --shadow-medium: 0 8px 30px rgba(0, 0, 0, 0.12);
+  --shadow-strong: 0 20px 60px rgba(0, 0, 0, 0.15);
+  
+  --overlay-bg: rgba(168, 181, 255, 0.95);
+}
+
+/* 夜间模式 - 深色主题 */
+[data-theme="dark"] {
+  --primary-color: #5865f2;
+  --primary-dark: #4752c4;
+  --primary-gradient: linear-gradient(135deg, #5865f2 0%, #4752c4 100%);
+  
+  --bg-primary: linear-gradient(135deg, #1a1d2e 0%, #16213e 100%);
+  --bg-secondary: rgba(30, 33, 48, 0.95);
+  --bg-card: #1e2139;
+  --bg-hover: rgba(88, 101, 242, 0.2);
+  
+  --text-primary: #e4e6eb;
+  --text-secondary: #b0b3b8;
+  --text-light: #8a8d91;
+  --text-white: white;
+  
+  --border-color: #2d3142;
+  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --shadow-medium: 0 8px 30px rgba(0, 0, 0, 0.4);
+  --shadow-strong: 0 20px 60px rgba(0, 0, 0, 0.5);
+  
+  --overlay-bg: rgba(88, 101, 242, 0.95);
+}
+
+/* 全局样式 - CineMatch 电影推荐系统 */
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-hover);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-gradient);
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-color) 100%);
+}
+
+/* 选中文本样式 */
+::selection {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+::-moz-selection {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* 全局字体优化 */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Element Plus 组件样式覆盖 */
+.el-button {
+  font-weight: 600;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.el-button--primary {
+  background: var(--primary-gradient);
+  border: none;
+  box-shadow: 0 4px 15px rgba(88, 101, 242, 0.3);
+}
+
+.el-button--primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(88, 101, 242, 0.4);
+}
+
+.el-card {
+  border-radius: 16px;
+  border: none;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-soft);
+  transition: all 0.3s ease;
+}
+
+.el-card:hover {
+  box-shadow: var(--shadow-medium);
+}
+
+.el-input__wrapper {
+  border-radius: 10px;
+  background: var(--bg-card);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.el-input__wrapper:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 4px var(--bg-hover);
+}
+
+.el-dialog {
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--bg-card);
+}
+
+.el-dialog__header {
+  background: var(--primary-gradient);
+  padding: 24px;
+}
+
+.el-dialog__title {
+  color: white;
+  font-weight: 700;
+  font-size: 20px;
+}
+
+.el-dialog__headerbtn .el-dialog__close {
+  color: white;
+  font-size: 20px;
+}
+
+.el-message {
+  border-radius: 12px;
+  box-shadow: var(--shadow-medium);
+  min-width: 300px;
+}
+
+.el-message--success {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  border: none;
+}
+
+.el-message--error {
+  background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+  border: none;
+}
+
+.el-message--warning {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  border: none;
+}
+
+.el-message--info {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  border: none;
+}
+
+.el-message__content {
+  color: white;
+  font-weight: 600;
+}
+
+/* 通用工具类 */
+.text-gradient {
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glass-effect {
+  background: var(--bg-secondary);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-color);
+}
+
+.shadow-soft {
+  box-shadow: var(--shadow-soft);
+}
+
+.shadow-medium {
+  box-shadow: var(--shadow-medium);
+}
+
+.shadow-strong {
+  box-shadow: var(--shadow-strong);
+}
+
+/* 通用动画 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+/* 动画类 */
+.animate-fadeIn {
+  animation: fadeIn 0.6s ease;
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.6s ease;
+}
+
+.animate-fadeInDown {
+  animation: fadeInDown 0.6s ease;
+}
+
+.animate-slideInLeft {
+  animation: slideInLeft 0.6s ease;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.6s ease;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.6s ease;
+}
+
+.animate-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* 加载骨架屏 */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--border-color) 25%,
+    var(--bg-hover) 50%,
+    var(--border-color) 75%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+  border-radius: 8px;
+}
+
+/* 空状态样式 */
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: var(--text-light);
+}
+
+.empty-state-icon {
+  font-size: 80px;
+  margin-bottom: 24px;
+  opacity: 0.5;
+}
+
+.empty-state-title {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+  color: var(--text-secondary);
+}
+
+.empty-state-text {
+  font-size: 16px;
+  margin: 0 0 32px 0;
+}
+
+/* 响应式断点 */
+@media (max-width: 1400px) {
+  .container-xl {
+    max-width: 1200px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .container-lg {
+    max-width: 960px;
+  }
+}
+
+@media (max-width: 992px) {
+  .container-md {
+    max-width: 720px;
+  }
+}
+
+@media (max-width: 768px) {
+  .container-sm {
+    max-width: 540px;
+  }
+  
+  /* 移动端字体缩小 */
+  body {
+    font-size: 14px;
+  }
+  
+  h1 {
+    font-size: 28px;
+  }
+  
+  h2 {
+    font-size: 24px;
+  }
+  
+  h3 {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 576px) {
+  .container-xs {
+    max-width: 100%;
+    padding: 0 16px;
+  }
+}
+
+/* 打印样式 */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white;
+  }
+  
+  .glass-effect {
+    background: white;
+    backdrop-filter: none;
+  }
+}
+
+/* 减少动画（用户偏好） */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

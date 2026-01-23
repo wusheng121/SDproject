@@ -8,6 +8,7 @@ import Login from "../views/Login.vue";
 import Favorites from "../views/Favorites.vue";
 import Rate from "../views/Rate.vue";
 import MyRatings from "../views/MyRatings.vue";
+import UserCenter from "../views/UserCenter.vue";
 
 const routes = [
   { path: "/", name: "Home", component: Home },
@@ -17,7 +18,8 @@ const routes = [
   { path: "/login", name: "Login", component: Login },
   { path: "/favorites", name: "Favorites", component: Favorites, meta: { requiresAuth: true } },
   { path: "/rate", name: "Rate", component: Rate, meta: { requiresAuth: true } },
-  { path: "/my-ratings", name: "MyRatings", component: MyRatings, meta: { requiresAuth: true } }
+  { path: "/my-ratings", name: "MyRatings", component: MyRatings, meta: { requiresAuth: true } },
+  { path: "/user-center", name: "UserCenter", component: UserCenter, meta: { requiresAuth: true } }
 ];
 
 const router = createRouter({

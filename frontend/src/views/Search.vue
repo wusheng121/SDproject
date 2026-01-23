@@ -1,8 +1,8 @@
 <template>
-  <div>
-    <h2 style="margin: 0 0 12px">搜索页</h2>
+  <div class="search-page">
+    <h2 class="page-title">搜索电影</h2>
 
-    <el-card style="margin-bottom: 16px">
+    <el-card class="search-card">
       <el-form :inline="true" @submit.prevent>
         <el-form-item label="标题">
           <el-input v-model="form.title" placeholder="可空" style="width: 220px" @keyup.enter="onSearch" />
@@ -28,14 +28,14 @@
       </el-form>
     </el-card>
 
-    <el-card>
-      <div style="font-weight: 600; margin-bottom: 8px">结果</div>
+    <el-card class="results-card">
+      <div class="results-header">搜索结果</div>
       <el-empty v-if="results.length === 0" description="暂无结果（输入关键词后点击搜索）" />
-      <el-row v-else :gutter="12">
-        <el-col v-for="m in results" :key="m.id" :xs="12" :sm="8" :md="6" :lg="4" style="margin-bottom: 12px">
+      <div v-else class="movies-grid">
+        <div v-for="m in results" :key="m.id" class="movie-item">
           <MovieCard :movie="m" @open="openMovie" />
-        </el-col>
-      </el-row>
+        </div>
+      </div>
     </el-card>
   </div>
 </template>
@@ -82,9 +82,78 @@ function openMovie(movie) {
 }
 </script>
 
+<style scoped>
+.search-page {
+  animation: fadeIn 0.6s ease;
+}
 
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
+.page-title {
+  margin: 0 0 24px 0;
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
 
+.search-card {
+  margin-bottom: 24px;
+  background: var(--bg-card);
+  border: none;
+  box-shadow: var(--shadow-soft);
+}
 
+.results-card {
+  background: var(--bg-card);
+  border: none;
+  box-shadow: var(--shadow-soft);
+}
 
+.results-header {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
 
+.movies-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 24px;
+}
+
+.movie-item {
+  animation: fadeInUp 0.6s ease both;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .page-title {
+    font-size: 24px;
+  }
+
+  .movies-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+  }
+}
+</style>
