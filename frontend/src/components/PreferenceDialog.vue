@@ -23,25 +23,25 @@
           <span class="status-icon">✨</span>
           <span v-if="selectedGenres.length > 0" class="status-text selected">
             已选择 <strong>{{ selectedGenres.length }}</strong> 个类型
-          </span>
+      </span>
           <span v-else class="status-text unselected">
             请至少选择 <strong>1</strong> 个你感兴趣的类型
-          </span>
-        </div>
+      </span>
+    </div>
         <div class="quick-actions">
           <button 
             class="quick-btn" 
             @click="handleSelectAll" 
             :disabled="selectedGenres.length === allGenres.length"
           >
-            全选
+        全选
           </button>
           <button 
             class="quick-btn" 
             @click="handleClearAll" 
             :disabled="selectedGenres.length === 0"
           >
-            清空
+        清空
           </button>
         </div>
       </div>
@@ -78,7 +78,7 @@
           </button>
           <button 
             class="footer-btn save-btn" 
-            @click="handleSave"
+            @click="handleSave" 
             :disabled="selectedGenres.length === 0"
           >
             <span class="btn-icon">🎉</span>

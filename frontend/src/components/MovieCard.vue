@@ -25,7 +25,7 @@
           <div class="overlay-text">查看详情</div>
         </div>
       </div>
-    </div>
+      </div>
 
     <div class="movie-info">
       <h3 class="movie-title" :title="movie?.title">{{ movie?.title || "-" }}</h3>
@@ -47,7 +47,7 @@
         <span class="ml-text">为你推荐 {{ movie.ml_predicted_rating.toFixed(1) }}分</span>
       </div>
     </div>
-  </div>
+    </div>
 </template>
 
 <script setup>

@@ -10,8 +10,8 @@
           <span class="avatar-icon">👤</span>
         </div>
         <div class="profile-info">
-          <h3 class="username">{{ userStore.username || '未登录' }}</h3>
-          <p class="user-email">{{ userStore.email || '暂无邮箱' }}</p>
+          <h3 class="username">{{ userStore.profile?.username || '未登录' }}</h3>
+          <p class="user-email">{{ userStore.profile?.email || '暂无邮箱' }}</p>
         </div>
       </div>
 
@@ -125,6 +125,9 @@ const stats = ref({
 
 async function loadUserData() {
   try {
+    // 加载用户资料
+    await userStore.fetchProfile();
+
     // 加载偏好
     const prefResp = await apiGetPreferences();
     preferences.value = prefResp?.data?.preferred_genres || [];

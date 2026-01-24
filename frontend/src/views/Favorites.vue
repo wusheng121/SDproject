@@ -1,7 +1,7 @@
 <template>
   <div class="favorites-page">
     <div class="page-header">
-      <div>
+  <div>
         <h2 class="page-title">个人收藏夹</h2>
         <p class="page-subtitle">需要登录后才能看到你的收藏</p>
       </div>

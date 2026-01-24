@@ -1,7 +1,7 @@
 <template>
   <div class="my-ratings-page">
     <div class="page-header">
-      <div>
+  <div>
         <h2 class="page-title">我的评分</h2>
         <p class="page-subtitle">展示你对电影打过的分</p>
       </div>

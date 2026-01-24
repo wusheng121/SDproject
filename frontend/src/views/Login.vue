@@ -139,10 +139,7 @@ async function onSubmit() {
     if (resp?.code === 0) {
       ElMessage.success("🎉 登录成功");
       // 登录成功后检查用户是否设置了兴趣标签
-      setTimeout(() => {
-        checkPreferences();
-        router.push("/");
-      }, 500);
+      await checkPreferences();
     } else {
       ElMessage.error(resp?.message || "登录失败");
     }
@@ -159,15 +156,20 @@ async function checkPreferences() {
     if (!hasPreference) {
       setTimeout(() => {
         showPreferenceDialog.value = true;
-      }, 1000);
+      }, 800);
+    } else {
+      // 已有偏好，直接跳转首页
+      router.push("/");
     }
   } catch (err) {
     console.error("检查兴趣标签失败", err);
+    router.push("/");
   }
 }
 
 function onPreferenceSaved() {
   ElMessage.success("兴趣标签已更新，推荐内容将根据您的偏好调整");
+  router.push("/");
 }
 
 function handleForgotPassword() {

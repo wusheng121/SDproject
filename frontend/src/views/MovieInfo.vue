@@ -36,10 +36,10 @@
             <div v-if="movie.is_favorited != null" class="meta-item">
               <span class="meta-label">收藏状态：</span>
               <span class="meta-value favorite-status">{{ movie.is_favorited ? "已收藏" : "未收藏" }}</span>
-            </div>
+          </div>
             <div v-if="movie.my_rating" class="meta-item">
               <span class="meta-label">我的评分：</span>
-              <el-rate :model-value="movie.my_rating.score" disabled style="vertical-align: middle" />
+            <el-rate :model-value="movie.my_rating.score" disabled style="vertical-align: middle" />
               <span class="rating-time">更新时间：{{ movie.my_rating.updated_at || "-" }}</span>
             </div>
           </div>
