@@ -109,6 +109,7 @@ const canGoBack = computed(() => {
 const navItems = [
   { path: '/', label: '首页', icon: '🏠' },
   { path: '/search', label: '搜索', icon: '🔍' },
+  { path: '/map', label: '地图探索', icon: '🗺️' },
   { path: '/favorites', label: '收藏夹', icon: '❤️' },
   { path: '/rate', label: '评分', icon: '⭐' },
   { path: '/my-ratings', label: '我的评分', icon: '📝' },

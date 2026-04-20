@@ -3,8 +3,13 @@ import { ElMessage } from "element-plus";
 
 import router from "../router";
 
+const rawBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+const normalizedBaseUrl = rawBaseUrl
+  ? rawBaseUrl.replace(/\/$/, "")
+  : "/api";
+
 const http = axios.create({
-  baseURL: "/api",
+  baseURL: normalizedBaseUrl,
   timeout: 10000
 });
 

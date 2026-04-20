@@ -45,6 +45,9 @@ class Movie(db.Model, TimestampMixin):
     description = db.Column(db.Text, nullable=True)
     release_year = db.Column(db.Integer, index=True, nullable=True)
     poster_url = db.Column(db.String(500), nullable=True)
+    country = db.Column(db.String(80), nullable=True, index=True)
+    longitude = db.Column(db.Float, nullable=True)
+    latitude = db.Column(db.Float, nullable=True)
 
     genres = db.relationship("MovieGenre", back_populates="movie", cascade="all, delete-orphan")
     actors = db.relationship("MovieActor", back_populates="movie", cascade="all, delete-orphan")

@@ -4,6 +4,103 @@
 - **backend/**：Flask + SQLite（API 服务）
 - **frontend/**：Vue 3 + Vite + Vue Router + Element Plus（前端页面）
 
+## 在线部署（推荐：Vercel 前端 + Render 后端）
+
+本项目已经适配为前后端分离部署：
+- 前端部署到 **Vercel**
+- 后端部署到 **Render**
+- 部署完成后，老师和同学可以直接通过前端公网网址访问
+
+### 一、部署前准备
+
+1. 先将整个项目推送到 GitHub。
+2. 确保前端和后端目录结构保持不变：
+   - `frontend/`
+   - `backend/`
+3. 前端生产环境接口地址通过环境变量 `VITE_API_BASE_URL` 配置。
+4. 后端跨域白名单通过环境变量 `CORS_ORIGINS` 配置。
+
+### 二、部署后端到 Render
+
+在 Render 中创建一个新的 **Web Service**，并选择当前仓库。
+
+推荐配置如下：
+- **Root Directory**: `backend`
+- **Runtime**: `Python`
+- **Build Command**: `pip install -r requirements.txt`
+- **Start Command**: `gunicorn app:app`
+
+后端环境变量建议配置：
+- `SECRET_KEY`：随机字符串
+- `JWT_EXPIRE_SECONDS`：`86400`
+- `CORS_ORIGINS`：你的前端域名，例如 `https://your-project.vercel.app`
+- `TMDB_API_KEY`：如果需要在线补全 TMDB 数据再配置
+
+仓库根目录提供了可选的 Render 配置文件：
+- `render.yaml`
+
+后端部署完成后，记下你的公网地址，例如：
+- `https://your-backend.onrender.com`
+
+健康检查地址：
+- `https://your-backend.onrender.com/api/health`
+
+### 三、部署前端到 Vercel
+
+在 Vercel 中导入当前仓库。
+
+推荐配置如下：
+- **Framework Preset**: `Vite`
+- **Root Directory**: `frontend`
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
+
+前端环境变量：
+- `VITE_API_BASE_URL=https://your-backend.onrender.com/api`
+
+项目已包含：
+- `frontend/vercel.json`
+
+它会将 Vue Router 的前端路由统一回退到 `index.html`，避免刷新页面时出现 404。
+
+前端部署完成后，你会得到一个固定网址，例如：
+- `https://your-project.vercel.app`
+
+这个网址就是老师和同学访问的地址。
+
+### 四、以后如何更新线上项目
+
+如果你后续修改了项目，只需要：
+
+```bash
+git add .
+git commit -m "update project"
+git push
+```
+
+如果 Vercel 和 Render 已连接 GitHub：
+- 平台会自动重新部署
+- **网址通常不变**
+- 访问到的内容会更新为最新版本
+
+### 五、本地开发与线上部署的区别
+
+本地开发时：
+- 前端通过 `vite.config.js` 中的代理，把 `/api` 转发到 `http://127.0.0.1:5000`
+
+线上部署时：
+- 前端直接通过 `VITE_API_BASE_URL` 请求 Render 上的后端接口
+
+### 六、示例环境变量文件
+
+- 前端示例：`frontend/.env.example`
+- 后端示例：`backend/.env.example`
+
+### 七、说明
+
+- Render 免费服务可能会休眠，首次访问可能需要等待几十秒唤醒。
+- 如果你使用的是 Render 免费实例，答辩前建议先打开一次后端和前端链接，避免现场首次冷启动等待。
+
 ### 1) 启动后端（Flask）
 
 进入后端目录并安装依赖：

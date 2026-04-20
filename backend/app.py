@@ -32,7 +32,39 @@ def ensure_sqlite_schema(app):
                 conn.commit()
             print("✓ 已自动添加 users.preferred_genres 列")
     except Exception as e:
-        print(f"⚠️ 自动修复 users.preferred_genres 列失败: {e}")
+            print(f"⚠️ 自动修复 users.preferred_genres 列失败: {e}")
+
+
+def ensure_sqlite_movies_geo_columns(app):
+    """为 movies 表补充 country / longitude / latitude（SQLite 开发环境）。"""
+    try:
+        with app.app_context():
+            engine = db.get_engine()
+            if engine.url.get_backend_name() != "sqlite":
+                return
+
+            inspector = inspect(engine)
+            if "movies" not in inspector.get_table_names():
+                return
+
+            columns = {col["name"] for col in inspector.get_columns("movies")}
+            alters = []
+            if "country" not in columns:
+                alters.append("ALTER TABLE movies ADD COLUMN country VARCHAR(80)")
+            if "longitude" not in columns:
+                alters.append("ALTER TABLE movies ADD COLUMN longitude REAL")
+            if "latitude" not in columns:
+                alters.append("ALTER TABLE movies ADD COLUMN latitude REAL")
+            if not alters:
+                return
+
+            with engine.connect() as conn:
+                for sql in alters:
+                    conn.execute(text(sql))
+                conn.commit()
+            print("✓ 已自动添加 movies.country / longitude / latitude 列")
+    except Exception as e:
+        print(f"⚠️ 自动修复 movies 地理列失败: {e}")
 
 
 def create_app():
@@ -46,10 +78,11 @@ def create_app():
 
     # init extensions
     db.init_app(app)
-    cors.init_app(app, resources={r"/api/*": {"origins": "*"}})
+    cors.init_app(app, resources={r"/api/*": {"origins": app.config["CORS_ORIGINS"]}})
 
     # SQLite 自修复缺失列（便于本地测试）
     ensure_sqlite_schema(app)
+    ensure_sqlite_movies_geo_columns(app)
 
     # register blueprints
     register_blueprints(app)
@@ -87,12 +120,15 @@ def create_app():
     return app
 
 
+app = create_app()
+
+with app.app_context():
+    db.create_all()
+
+
 if __name__ == "__main__":
-    app = create_app()
-    # 课程项目：启动时自动建表（方便第一次运行）
-    with app.app_context():
-        db.create_all()
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    port = int(os.environ.get("PORT", "5000"))
+    app.run(host="0.0.0.0", port=port, debug=False)
 
 
 
