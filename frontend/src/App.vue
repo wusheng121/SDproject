@@ -4,10 +4,10 @@
     <header class="app-header">
       <div class="header-content">
         <div class="logo-section" @click="router.push('/')">
-          <div class="logo-icon">🎬</div>
+          <div class="logo-icon">🛒</div>
           <div class="logo-text">
-            <div class="logo-title">CineMatch</div>
-            <div class="logo-subtitle">智能电影推荐</div>
+            <div class="logo-title">校园二手</div>
+            <div class="logo-subtitle">智能推荐交易平台</div>
           </div>
         </div>
 
@@ -71,7 +71,7 @@
     <!-- 页脚 -->
     <footer class="app-footer">
       <div class="footer-content">
-        <p>© 2026 CineMatch 智能电影推荐系统 | 数据库原理课程项目</p>
+        <p>© 2024 校园二手交易平台 | 数据库原理课程项目</p>
         <p class="footer-links">
           <a href="#">关于我们</a>
           <span>·</span>
@@ -109,10 +109,8 @@ const canGoBack = computed(() => {
 const navItems = [
   { path: '/', label: '首页', icon: '🏠' },
   { path: '/search', label: '搜索', icon: '🔍' },
-  { path: '/map', label: '地图探索', icon: '🗺️' },
-  { path: '/favorites', label: '收藏夹', icon: '❤️' },
-  { path: '/rate', label: '评分', icon: '⭐' },
-  { path: '/my-ratings', label: '我的评分', icon: '📝' },
+  { path: '/publish', label: '发布', icon: '📦' },
+  { path: '/favorites', label: '收藏', icon: '❤️' },
 ];
 
 function goBack() {

@@ -23,22 +23,22 @@
           <div class="stat-card">
             <div class="stat-icon">❤️</div>
             <div class="stat-value">{{ stats.favorites }}</div>
-            <div class="stat-label">收藏电影</div>
+            <div class="stat-label">收藏商品</div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon">⭐</div>
-            <div class="stat-value">{{ stats.ratings }}</div>
-            <div class="stat-label">评分数量</div>
+            <div class="stat-icon">📦</div>
+            <div class="stat-value">{{ stats.products }}</div>
+            <div class="stat-label">发布商品</div>
           </div>
           <div class="stat-card">
             <div class="stat-icon">📊</div>
-            <div class="stat-value">{{ stats.avgRating }}</div>
-            <div class="stat-label">平均评分</div>
+            <div class="stat-value">{{ stats.behaviors }}</div>
+            <div class="stat-label">互动次数</div>
           </div>
           <div class="stat-card">
             <div class="stat-icon">🎯</div>
-            <div class="stat-value">{{ stats.genres }}</div>
-            <div class="stat-label">偏好类型</div>
+            <div class="stat-value">{{ stats.categories }}</div>
+            <div class="stat-label">偏好品类</div>
           </div>
         </div>
       </div>
@@ -80,13 +80,13 @@
             <span class="btn-icon">❤️</span>
             <span>我的收藏</span>
           </el-button>
-          <el-button @click="router.push('/my-ratings')">
-            <span class="btn-icon">⭐</span>
-            <span>我的评分</span>
+          <el-button @click="router.push('/publish')">
+            <span class="btn-icon">📦</span>
+            <span>发布商品</span>
           </el-button>
-          <el-button @click="router.push('/rate')">
-            <span class="btn-icon">📝</span>
-            <span>去评分</span>
+          <el-button @click="router.push('/search')">
+            <span class="btn-icon">🔍</span>
+            <span>搜索商品</span>
           </el-button>
           <el-button type="danger" @click="handleLogout">
             <span class="btn-icon">🚪</span>
@@ -107,8 +107,6 @@ import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { useUserStore } from "../stores/user";
 import { apiGetPreferences } from "../api/user";
-import { apiUserFavorites } from "../api/user";
-import { apiGetMyRatings } from "../api/actions";
 import PreferenceDialog from "../components/PreferenceDialog.vue";
 
 const router = useRouter();
@@ -118,9 +116,9 @@ const showPreferenceDialog = ref(false);
 const preferences = ref([]);
 const stats = ref({
   favorites: 0,
-  ratings: 0,
-  avgRating: 0,
-  genres: 0
+  products: 0,
+  behaviors: 0,
+  categories: 0
 });
 
 async function loadUserData() {
@@ -128,24 +126,17 @@ async function loadUserData() {
     // 加载用户资料
     await userStore.fetchProfile();
 
-    // 加载偏好
+    // 加载偏好品类
     const prefResp = await apiGetPreferences();
-    preferences.value = prefResp?.data?.preferred_genres || [];
-    stats.value.genres = preferences.value.length;
+    preferences.value = prefResp?.data?.preferred_categories || [];
+    stats.value.categories = preferences.value.length;
 
-    // 加载收藏数量
-    const favResp = await apiUserFavorites();
-    stats.value.favorites = favResp?.data?.items?.length || 0;
-
-    // 加载评分数据
-    const ratingsResp = await apiGetMyRatings();
-    const ratings = ratingsResp?.data?.items || [];
-    stats.value.ratings = ratings.length;
+    // TODO: 加载用户统计数据
+    // 需要后端提供统计接口
+    // - 收藏商品数量
+    // - 发布商品数量
+    // - 行为记录数量
     
-    if (ratings.length > 0) {
-      const sum = ratings.reduce((acc, r) => acc + r.score, 0);
-      stats.value.avgRating = (sum / ratings.length).toFixed(1);
-    }
   } catch (err) {
     console.error("加载用户数据失败", err);
   }

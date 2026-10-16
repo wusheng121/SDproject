@@ -1,21 +1,20 @@
 <template>
-  <div class="movie-card" @click="$emit('open', movie)">
-    <div class="movie-poster">
+  <div class="product-card" @click="$emit('open', product)">
+    <div class="product-image">
       <img 
-        v-if="movie?.poster_url" 
-        :src="movie.poster_url" 
-        :alt="movie.title"
-        class="poster-image"
+        v-if="product?.image_url" 
+        :src="product.image_url" 
+        :alt="product.name"
+        class="image"
       />
-      <div v-else class="poster-placeholder">
-        <span class="placeholder-icon">🎬</span>
-        <span class="placeholder-text">暂无海报</span>
+      <div v-else class="image-placeholder">
+        <span class="placeholder-icon">📦</span>
+        <span class="placeholder-text">暂无图片</span>
       </div>
       
-      <!-- 评分徽章 -->
-      <div v-if="movie?.rating_avg != null" class="rating-badge">
-        <span class="rating-star">⭐</span>
-        <span class="rating-value">{{ movie.rating_avg.toFixed(1) }}</span>
+      <!-- 成色标签 -->
+      <div v-if="product?.condition" class="condition-badge">
+        {{ product.condition }}
       </div>
 
       <!-- 悬停遮罩 -->
@@ -25,34 +24,40 @@
           <div class="overlay-text">查看详情</div>
         </div>
       </div>
-      </div>
+    </div>
 
-    <div class="movie-info">
-      <h3 class="movie-title" :title="movie?.title">{{ movie?.title || "-" }}</h3>
+    <div class="product-info">
+      <h3 class="product-name" :title="product?.name">{{ product?.name || "-" }}</h3>
       
-      <div class="movie-meta">
-        <span v-if="movie?.release_year" class="meta-item">
-          <span class="meta-icon">📅</span>
-          <span>{{ movie.release_year }}</span>
+      <!-- 价格 -->
+      <div class="product-price">
+        <span class="price-symbol">¥</span>
+        <span class="price-value">{{ product?.price?.toFixed(0) || "0" }}</span>
+      </div>
+
+      <div class="product-meta">
+        <span v-if="product?.categories?.length" class="meta-item">
+          <span class="meta-icon">🏷️</span>
+          <span>{{ product.categories[0] }}</span>
         </span>
-        <span v-if="movie?.rating_count" class="meta-item">
-          <span class="meta-icon">👥</span>
-          <span>{{ movie.rating_count }} 评分</span>
+        <span v-if="product?.behavior_count" class="meta-item">
+          <span class="meta-icon">❤️</span>
+          <span>{{ product.behavior_count }}</span>
         </span>
       </div>
 
-      <!-- ML预测评分（如果有） -->
-      <div v-if="movie?.ml_predicted_rating" class="ml-prediction">
-        <span class="ml-icon">🤖</span>
-        <span class="ml-text">为你推荐 {{ movie.ml_predicted_rating.toFixed(1) }}分</span>
+      <!-- 推荐理由（如果有） -->
+      <div v-if="product?.reason" class="recommendation-reason">
+        <span class="reason-icon">✨</span>
+        <span class="reason-text">{{ product.reason }}</span>
       </div>
     </div>
-    </div>
+  </div>
 </template>
 
 <script setup>
 defineProps({
-  movie: {
+  product: {
     type: Object,
     default: null
   }
@@ -62,7 +67,7 @@ defineEmits(["open"]);
 </script>
 
 <style scoped>
-.movie-card {
+.product-card {
   background: var(--bg-card);
   border-radius: 16px;
   overflow: hidden;
@@ -72,12 +77,12 @@ defineEmits(["open"]);
   position: relative;
 }
 
-.movie-card:hover {
+.product-card:hover {
   transform: translateY(-12px) scale(1.02);
   box-shadow: 0 20px 40px rgba(88, 101, 242, 0.3);
 }
 
-.movie-card::before {
+.product-card::before {
   content: '';
   position: absolute;
   top: 0;
@@ -91,20 +96,20 @@ defineEmits(["open"]);
   z-index: 1;
 }
 
-.movie-card:hover::before {
+.product-card:hover::before {
   opacity: 0.1;
 }
 
-/* 海报区域 */
-.movie-poster {
+/* 商品图片区域 */
+.product-image {
   position: relative;
   width: 100%;
-  padding-top: 150%; /* 2:3 宽高比 */
+  padding-top: 100%; /* 1:1 宽高比 */
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   overflow: hidden;
 }
 
-.poster-image {
+.image {
   position: absolute;
   top: 0;
   left: 0;
@@ -114,11 +119,11 @@ defineEmits(["open"]);
   transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.movie-card:hover .poster-image {
+.product-card:hover .image {
   transform: scale(1.1);
 }
 
-.poster-placeholder {
+.image-placeholder {
   position: absolute;
   top: 0;
   left: 0;
@@ -144,8 +149,8 @@ defineEmits(["open"]);
   opacity: 0.9;
 }
 
-/* 评分徽章 */
-.rating-badge {
+/* 成色标签 */
+.condition-badge {
   position: absolute;
   top: 12px;
   right: 12px;
@@ -153,9 +158,9 @@ defineEmits(["open"]);
   backdrop-filter: blur(10px);
   padding: 6px 12px;
   border-radius: 20px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
   z-index: 2;
   animation: fadeInScale 0.5s ease;
 }
@@ -169,16 +174,6 @@ defineEmits(["open"]);
     opacity: 1;
     transform: scale(1);
   }
-}
-
-.rating-star {
-  font-size: 14px;
-}
-
-.rating-value {
-  color: white;
-  font-weight: 700;
-  font-size: 14px;
 }
 
 /* 悬停遮罩 */
@@ -197,7 +192,7 @@ defineEmits(["open"]);
   z-index: 2;
 }
 
-.movie-card:hover .hover-overlay {
+.product-card:hover .hover-overlay {
   opacity: 1;
 }
 
@@ -210,7 +205,7 @@ defineEmits(["open"]);
   transition: transform 0.4s ease;
 }
 
-.movie-card:hover .overlay-content {
+.product-card:hover .overlay-content {
   transform: translateY(0);
 }
 
@@ -235,8 +230,8 @@ defineEmits(["open"]);
   letter-spacing: 0.5px;
 }
 
-/* 电影信息区域 */
-.movie-info {
+/* 商品信息区域 */
+.product-info {
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -245,7 +240,7 @@ defineEmits(["open"]);
   z-index: 2;
 }
 
-.movie-title {
+.product-name {
   font-size: 16px;
   font-weight: 700;
   color: var(--text-primary);
@@ -260,11 +255,29 @@ defineEmits(["open"]);
   transition: color 0.3s ease;
 }
 
-.movie-card:hover .movie-title {
+.product-card:hover .product-name {
   color: var(--primary-color);
 }
 
-.movie-meta {
+/* 价格 */
+.product-price {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  color: #ff4d4f;
+  font-weight: 700;
+}
+
+.price-symbol {
+  font-size: 14px;
+}
+
+.price-value {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.product-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -282,8 +295,8 @@ defineEmits(["open"]);
   font-size: 14px;
 }
 
-/* ML推荐标签 */
-.ml-prediction {
+/* 推荐理由 */
+.recommendation-reason {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -306,53 +319,32 @@ defineEmits(["open"]);
   }
 }
 
-.ml-icon {
+.reason-icon {
   font-size: 14px;
 }
 
-.ml-text {
+.reason-text {
   letter-spacing: 0.3px;
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .movie-title {
+  .product-name {
     font-size: 14px;
     min-height: 40px;
   }
 
-  .movie-meta {
+  .product-meta {
     font-size: 12px;
   }
 
-  .rating-badge {
-    padding: 4px 10px;
+  .price-value {
+    font-size: 20px;
   }
 
-  .rating-value {
-    font-size: 13px;
+  .condition-badge {
+    padding: 4px 10px;
+    font-size: 11px;
   }
 }
 </style>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

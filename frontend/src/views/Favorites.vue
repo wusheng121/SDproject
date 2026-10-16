@@ -1,47 +1,87 @@
 <template>
   <div class="favorites-page">
     <div class="page-header">
-  <div>
-        <h2 class="page-title">个人收藏夹</h2>
-        <p class="page-subtitle">需要登录后才能看到你的收藏</p>
+      <div>
+        <h2 class="page-title">我的收藏</h2>
+        <p class="page-subtitle">收藏的商品都在这里</p>
       </div>
-      <el-button class="refresh-btn" @click="reload">刷新</el-button>
+      <el-button type="primary" @click="reload">
+        <span class="refresh-icon">🔄</span>
+        刷新
+      </el-button>
     </div>
 
     <el-card class="favorites-card">
-      <el-empty v-if="items.length === 0" description="暂无收藏（先去电影详情页点收藏试试）" />
-      <el-table v-else :data="items" class="favorites-table">
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column prop="title" label="标题" />
-        <el-table-column prop="release_year" label="年份" width="120" />
-        <el-table-column label="操作" width="160">
-          <template #default="{ row }">
-            <el-button size="small" @click="remove(row.id)">移除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <el-empty v-if="items.length === 0" description="暂无收藏，去商品详情页收藏试试吧" />
+      <div v-else class="products-grid">
+        <div v-for="p in items" :key="p.id" class="product-item">
+          <ProductCard :product="p" @open="openProduct" />
+          <el-button 
+            class="remove-btn" 
+            size="small" 
+            type="danger" 
+            @click.stop="removeFavorite(p.id)"
+          >
+            移除收藏
+          </el-button>
+        </div>
+      </div>
     </el-card>
   </div>
 </template>
 
 <script setup>
 import { onMounted, ref } from "vue";
-import { ElMessage } from "element-plus";
+import { useRouter } from "vue-router";
+import { ElMessage, ElMessageBox } from "element-plus";
 
-import { apiUserFavorites } from "../api/user";
-import { apiToggleFavorite } from "../api/actions";
+import ProductCard from "../components/ProductCard.vue";
+import { apiGetUserBehaviors, apiAddBehavior } from "../api/behavior";
 
+const router = useRouter();
 const items = ref([]);
 
 async function reload() {
-  const resp = await apiUserFavorites();
-  items.value = resp?.data?.items || [];
+  try {
+    const res = await apiGetUserBehaviors({ behavior_type: "favorite" });
+    if (res.data.code === 0) {
+      // 提取商品信息
+      items.value = res.data.data.items.map(b => b.product);
+    }
+  } catch (error) {
+    console.error("加载收藏失败:", error);
+    ElMessage.error("加载收藏失败");
+  }
 }
 
-async function remove(id) {
-  await apiToggleFavorite({ movie_id: id, favorite: false });
-  ElMessage.success("已移除");
-  await reload();
+async function removeFavorite(productId) {
+  try {
+    await ElMessageBox.confirm('确定要移除这件商品吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    });
+    
+    // TODO: 需要后端提供删除收藏的接口
+    // 暂时使用添加收藏接口，传 favorite: false
+    await apiAddBehavior({
+      product_id: productId,
+      behavior_type: "favorite",
+      value: 0  // 0表示取消收藏
+    });
+    
+    ElMessage.success("已移除收藏");
+    await reload();
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error("移除收藏失败:", error);
+      ElMessage.error("移除收藏失败");
+    }
+  }
+}
+
+function openProduct(product) {
+  router.push(`/product/${product.id}`);
 }
 
 onMounted(reload);
@@ -49,7 +89,53 @@ onMounted(reload);
 
 <style scoped>
 .favorites-page {
-  animation: fadeIn 0.6s ease;
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.page-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.refresh-icon {
+  margin-right: 4px;
+}
+
+.favorites-card {
+  min-height: 400px;
+}
+
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 24px;
+}
+
+.product-item {
+  position: relative;
+  animation: fadeIn 0.4s ease;
+}
+
+.remove-btn {
+  margin-top: 12px;
+  width: 100%;
 }
 
 @keyframes fadeIn {
@@ -63,74 +149,16 @@ onMounted(reload);
   }
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 24px;
-}
-
-.page-title {
-  margin: 0 0 8px 0;
-  font-size: 28px;
-  font-weight: 800;
-  color: var(--text-primary);
-}
-
-.page-subtitle {
-  margin: 0;
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.refresh-btn {
-  background: var(--bg-secondary);
-  color: var(--primary-color);
-  border: 2px solid var(--border-color);
-  font-weight: 600;
-}
-
-.favorites-card {
-  background: var(--bg-card);
-  border: none;
-  box-shadow: var(--shadow-soft);
-}
-
-.favorites-table {
-  color: var(--text-primary);
-}
-
-:deep(.el-table) {
-  background: var(--bg-card);
-  color: var(--text-primary);
-}
-
-:deep(.el-table th) {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-:deep(.el-table tr) {
-  background: var(--bg-card);
-}
-
-:deep(.el-table td) {
-  border-color: var(--border-color);
-  color: var(--text-primary);
-}
-
 @media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 16px;
   }
-
-  .page-title {
-    font-size: 24px;
-  }
-
-  .refresh-btn {
-    align-self: stretch;
+  
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
   }
 }
 </style>

@@ -6,6 +6,9 @@ from models import Favorite, Genre, Movie, MovieGenre, Rating, User
 # 步骤四：导入机器学习推荐系统
 try:
     from ml.recommender import Recommender
+    from ml.hybrid import HybridRecommender
+    from ml.train_mf import MatrixFactorizationALS
+    from ml.content_based import ContentBasedRecommender
     
     # 全局推荐系统实例（应用启动时初始化）
     _ml_recommender = None

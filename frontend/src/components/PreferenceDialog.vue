@@ -10,8 +10,8 @@
       <div class="dialog-header">
         <div class="header-icon">🎯</div>
         <div class="header-content">
-          <h2 class="header-title">选择你的电影口味</h2>
-          <p class="header-subtitle">告诉我们你喜欢什么，我们为你精选好片</p>
+          <h2 class="header-title">选择你感兴趣的品类</h2>
+          <p class="header-subtitle">告诉我们你想买什么，我们为你推荐好物</p>
         </div>
       </div>
     </template>
@@ -21,46 +21,46 @@
       <div class="selection-status">
         <div class="status-info">
           <span class="status-icon">✨</span>
-          <span v-if="selectedGenres.length > 0" class="status-text selected">
-            已选择 <strong>{{ selectedGenres.length }}</strong> 个类型
+          <span v-if="selectedCategories.length > 0" class="status-text selected">
+            已选择 <strong>{{ selectedCategories.length }}</strong> 个品类
       </span>
           <span v-else class="status-text unselected">
-            请至少选择 <strong>1</strong> 个你感兴趣的类型
+            请至少选择 <strong>1</strong> 个你感兴趣的品类
       </span>
     </div>
         <div class="quick-actions">
           <button 
             class="quick-btn" 
             @click="handleSelectAll" 
-            :disabled="selectedGenres.length === allGenres.length"
+            :disabled="selectedCategories.length === allCategories.length"
           >
         全选
           </button>
           <button 
             class="quick-btn" 
             @click="handleClearAll" 
-            :disabled="selectedGenres.length === 0"
+            :disabled="selectedCategories.length === 0"
           >
         清空
           </button>
         </div>
       </div>
 
-      <!-- 类型选择网格 -->
-      <div class="genres-grid">
+      <!-- 品类选择网格 -->
+      <div class="categories-grid">
         <label 
-          v-for="genre in allGenres" 
-          :key="genre"
-          :class="['genre-item', { selected: selectedGenres.includes(genre) }]"
+          v-for="category in allCategories" 
+          :key="category"
+          :class="['category-item', { selected: selectedCategories.includes(category) }]"
         >
           <input 
             type="checkbox" 
-            :value="genre" 
-            v-model="selectedGenres"
-            class="genre-checkbox"
+            :value="category" 
+            v-model="selectedCategories"
+            class="category-checkbox"
           />
-          <span class="genre-icon">{{ getGenreIcon(genre) }}</span>
-          <span class="genre-name">{{ genre }}</span>
+          <span class="category-icon">{{ getCategoryIcon(category) }}</span>
+          <span class="category-name">{{ category }}</span>
           <span class="check-mark">✓</span>
         </label>
       </div>
@@ -79,10 +79,10 @@
           <button 
             class="footer-btn save-btn" 
             @click="handleSave" 
-            :disabled="selectedGenres.length === 0"
+            :disabled="selectedCategories.length === 0"
           >
             <span class="btn-icon">🎉</span>
-            <span>确定{{ selectedGenres.length > 0 ? `（${selectedGenres.length}）` : '' }}</span>
+            <span>确定{{ selectedCategories.length > 0 ? `（${selectedCategories.length}）` : '' }}</span>
           </button>
         </div>
       </div>
@@ -93,7 +93,7 @@
 <script setup>
 import { ref, watch } from "vue";
 import { ElMessage } from "element-plus";
-import { apiListGenres } from "../api/movies";
+import { apiListCategories } from "../api/products";
 import { apiSavePreferences } from "../api/user";
 
 const props = defineProps({
@@ -103,34 +103,25 @@ const props = defineProps({
 const emit = defineEmits(["update:modelValue", "saved"]);
 
 const visible = ref(false);
-const allGenres = ref([]);
-const selectedGenres = ref([]);
+const allCategories = ref([]);
+const selectedCategories = ref([]);
 
-// 类型图标映射
-const genreIcons = {
-  'Action': '💥',
-  'Adventure': '🗺️',
-  'Animation': '🎨',
-  'Children': '👶',
-  'Comedy': '😂',
-  'Crime': '🔫',
-  'Documentary': '📹',
-  'Drama': '🎭',
-  'Fantasy': '🧙',
-  'Film-Noir': '🎬',
-  'Horror': '👻',
-  'Musical': '🎵',
-  'Mystery': '🔍',
-  'Romance': '💕',
-  'Sci-Fi': '🚀',
-  'Thriller': '😱',
-  'War': '⚔️',
-  'Western': '🤠',
-  'IMAX': '🎥',
+// 品类图标映射
+const categoryIcons = {
+  '保温杯': '☕',
+  '运动鞋': '👟',
+  '手机': '📱',
+  '耳机': '🎧',
+  'T恤': '👕',
+  '鼠标': '🖱️',
+  '键盘': '⌨️',
+  '台灯': '💡',
+  '书籍': '📚',
+  '自行车': '🚲',
 };
 
-function getGenreIcon(genre) {
-  return genreIcons[genre] || '🎬';
+function getCategoryIcon(category) {
+  return categoryIcons[category] || '📦';
 }
 
 watch(
@@ -138,7 +129,7 @@ watch(
   (val) => {
     visible.value = val;
     if (val) {
-      loadGenres();
+      loadCategories();
     }
   }
 );
@@ -149,35 +140,41 @@ watch(visible, (val) => {
   }
 });
 
-async function loadGenres() {
-  const resp = await apiListGenres();
-  allGenres.value = resp?.data?.items || [];
+async function loadCategories() {
+  try {
+    const res = await apiListCategories();
+    if (res.data.code === 0) {
+      allCategories.value = res.data.data.items.map(c => c.name);
+    }
+  } catch (error) {
+    console.error("加载品类失败:", error);
+  }
 }
 
 async function handleSave() {
-  if (selectedGenres.value.length === 0) {
-    ElMessage.warning("请至少选择一个类型");
+  if (selectedCategories.value.length === 0) {
+    ElMessage.warning("请至少选择一个品类");
     return;
   }
-  await apiSavePreferences(selectedGenres.value);
+  await apiSavePreferences(selectedCategories.value);
   ElMessage.success("🎉 兴趣标签已保存");
   visible.value = false;
-  emit("saved", selectedGenres.value);
+  emit("saved", selectedCategories.value);
 }
 
 function handleSkip() {
   apiSavePreferences([]);
-  ElMessage.info("已跳过兴趣选择，将为您推荐全局热门内容");
+  ElMessage.info("已跳过兴趣选择，将为您推荐全局热门商品");
   visible.value = false;
   emit("saved", []);
 }
 
 function handleSelectAll() {
-  selectedGenres.value = [...allGenres.value];
+  selectedCategories.value = [...allCategories.value];
 }
 
 function handleClearAll() {
-  selectedGenres.value = [];
+  selectedCategories.value = [];
 }
 </script>
 
@@ -357,14 +354,14 @@ function handleClearAll() {
   cursor: not-allowed;
 }
 
-/* 类型网格 */
-.genres-grid {
+/* 品类网格 */
+.categories-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 12px;
 }
 
-.genre-item {
+.category-item {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -379,39 +376,39 @@ function handleClearAll() {
   user-select: none;
 }
 
-.genre-item:hover {
+.category-item:hover {
   border-color: var(--primary-color);
   transform: translateY(-4px);
   box-shadow: 0 8px 20px rgba(88, 101, 242, 0.2);
 }
 
-.genre-item.selected {
+.category-item.selected {
   background: var(--primary-gradient);
   border-color: var(--primary-color);
   box-shadow: 0 8px 20px rgba(88, 101, 242, 0.3);
 }
 
-.genre-checkbox {
+.category-checkbox {
   position: absolute;
   opacity: 0;
   pointer-events: none;
 }
 
-.genre-icon {
+.category-icon {
   font-size: 36px;
   margin-bottom: 8px;
   transition: transform 0.3s ease;
 }
 
-.genre-item:hover .genre-icon {
+.category-item:hover .category-icon {
   transform: scale(1.2);
 }
 
-.genre-item.selected .genre-icon {
+.category-item.selected .category-icon {
   transform: scale(1.1);
 }
 
-.genre-name {
+.category-name {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
@@ -419,7 +416,7 @@ function handleClearAll() {
   transition: color 0.3s ease;
 }
 
-.genre-item.selected .genre-name {
+.category-item.selected .category-name {
   color: white;
 }
 
@@ -442,7 +439,7 @@ function handleClearAll() {
   transition: all 0.3s ease;
 }
 
-.genre-item.selected .check-mark {
+.category-item.selected .check-mark {
   opacity: 1;
   transform: scale(1);
 }
@@ -517,20 +514,20 @@ function handleClearAll() {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
-  .genres-grid {
+  .categories-grid {
     grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
     gap: 10px;
   }
 
-  .genre-item {
+  .category-item {
     padding: 16px 8px;
   }
 
-  .genre-icon {
+  .category-icon {
     font-size: 30px;
   }
 
-  .genre-name {
+  .category-name {
     font-size: 12px;
   }
 

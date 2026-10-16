@@ -5,7 +5,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from auth import create_token, login_required
 from extensions import db
-from models import Movie, Rating, User
+from models import User
 from utils.response import err, ok
 
 user_bp = Blueprint("user_bp", __name__, url_prefix="/api")
@@ -87,22 +87,10 @@ def profile(user: User):
 def list_favorites(user: User):
     """
     GET /api/user/favorites
-    返回当前用户的收藏电影（用于前端收藏页）
+    返回当前用户的收藏商品（已迁移到 /api/favorites，此接口保留兼容）
+    TODO: 前端改用 /api/favorites 后可删除
     """
-    items = []
-    for fav in user.favorites:
-        m = fav.movie
-        if not m:
-            continue
-        items.append(
-            {
-                "id": m.id,
-                "title": m.title,
-                "release_year": m.release_year,
-                "poster_url": m.poster_url,
-            }
-        )
-    return ok({"items": items})
+    return ok({"items": [], "message": "请使用 /api/favorites 接口"})
 
 
 @user_bp.get("/user/ratings")
@@ -110,27 +98,10 @@ def list_favorites(user: User):
 def list_my_ratings(user: User):
     """
     GET /api/user/ratings
-    返回当前用户的评分列表（用于"我的评分"页面）
+    返回当前用户的评价列表（已迁移到 /api/my-reviews）
+    TODO: 前端改用 /api/my-reviews 后可删除
     """
-    ratings = (
-        db.session.query(Rating, Movie)
-        .join(Movie, Movie.id == Rating.movie_id)
-        .filter(Rating.user_id == user.id)
-        .order_by(Rating.updated_at.desc(), Rating.id.desc())
-        .all()
-    )
-
-    items = []
-    for r, m in ratings:
-        items.append(
-            {
-                "movie": {"id": m.id, "title": m.title, "release_year": m.release_year, "poster_url": m.poster_url},
-                "score": r.score,
-                "comment": r.comment,
-                "updated_at": r.updated_at.isoformat() if r.updated_at else None,
-            }
-        )
-    return ok({"items": items})
+    return ok({"items": [], "message": "请使用 /api/my-reviews 接口"})
 
 
 @user_bp.get("/user/preferences")
@@ -138,13 +109,13 @@ def list_my_ratings(user: User):
 def get_preferences(user: User):
     """
     GET /api/user/preferences
-    获取用户的兴趣标签（类型偏好）
+    获取用户的兴趣标签（品类偏好）
     """
-    genres = user.get_preferred_genres_list()
-    # has_preference: True 表示用户已经操作过（选择了类型或主动跳过）
+    categories = user.get_preferred_categories_list()
+    # has_preference: True 表示用户已经操作过（选择了品类或主动跳过）
     # NULL = 从未设置, "" = 主动跳过, "xxx,yyy" = 已选择
-    has_preference = user.preferred_genres is not None
-    return ok({"preferred_genres": genres, "has_preference": has_preference})
+    has_preference = user.preferred_categories is not None
+    return ok({"preferred_categories": categories, "has_preference": has_preference})
 
 
 @user_bp.post("/user/preferences")
@@ -153,19 +124,19 @@ def save_preferences(user: User):
     """
     POST /api/user/preferences
     保存/更新用户的兴趣标签
-    body: { genres: ["Action", "Comedy", ...] }
+    body: { categories: ["保温杯", "运动鞋", ...] }
     """
     payload = request.get_json(silent=True) or {}
-    genres = payload.get("genres") or []
+    categories = payload.get("categories") or []
 
-    if not isinstance(genres, list):
-        return err("genres 必须是数组", code=1201)
+    if not isinstance(categories, list):
+        return err("categories 必须是数组", code=1201)
 
     # 允许用户清空偏好（传空数组）或设置偏好
-    user.set_preferred_genres_list(genres)
+    user.set_preferred_categories_list(categories)
     db.session.commit()
 
-    return ok({"preferred_genres": user.get_preferred_genres_list()}, "偏好已保存")
+    return ok({"preferred_categories": user.get_preferred_categories_list()}, "偏好已保存")
 
 
 
