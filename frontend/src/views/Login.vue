@@ -1,12 +1,12 @@
-<template>
+﻿<template>
   <div class="auth-page">
     <div class="auth-container">
       <!-- 左侧装饰区 -->
       <div class="auth-decoration">
         <div class="decoration-content">
-          <div class="decoration-icon">🎬</div>
+          <div class="decoration-icon">校园</div>
           <h2 class="decoration-title">欢迎回来</h2>
-          <p class="decoration-text">继续你的精彩观影之旅</p>
+          <p class="decoration-text">继续发现校园里的好物</p>
           <div class="decoration-features">
             <div class="feature-item">
               <span class="feature-icon">🎯</span>
@@ -14,11 +14,11 @@
             </div>
             <div class="feature-item">
               <span class="feature-icon">⭐</span>
-              <span>收藏与评分</span>
+              <span>收藏与关注</span>
             </div>
             <div class="feature-item">
               <span class="feature-icon">🔥</span>
-              <span>发现热门影片</span>
+              <span>发现热门商品</span>
             </div>
           </div>
         </div>
@@ -136,13 +136,15 @@ async function onSubmit() {
   loading.value = true;
   try {
     const resp = await userStore.login(form);
-    if (resp?.code === 0) {
-      ElMessage.success("🎉 登录成功");
+    if (resp?.status >= 200 && resp?.status < 300) {
+      ElMessage.success("登录成功");
       // 登录成功后检查用户是否设置了兴趣标签
       await checkPreferences();
     } else {
-      ElMessage.error(resp?.message || "登录失败");
+      ElMessage.error(resp?.data?.message || "登录失败");
     }
+  } catch (error) {
+    ElMessage.error(error?.message || "用户名或密码错误");
   } finally {
     loading.value = false;
   }
@@ -151,7 +153,7 @@ async function onSubmit() {
 async function checkPreferences() {
   try {
     const resp = await apiGetPreferences();
-    const hasPreference = resp?.data?.has_preference || false;
+    const hasPreference = resp?.data?.data?.has_preference || false;
     // 如果用户没有设置兴趣标签，弹出对话框
     if (!hasPreference) {
       setTimeout(() => {
@@ -556,11 +558,3 @@ function handleForgotPassword() {
   }
 }
 </style>
-
-
-
-
-
-
-
-

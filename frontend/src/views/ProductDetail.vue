@@ -94,7 +94,7 @@ import { ElMessage } from "element-plus";
 
 import ProductCard from "../components/ProductCard.vue";
 import { apiProductDetail, apiListProducts } from "../api/products";
-import { apiAddBehavior } from "../api/behavior";
+import { apiAddBehavior, apiToggleFavorite } from "../api/behavior";
 import { useUserStore } from "../stores/user";
 
 const route = useRoute();
@@ -114,6 +114,7 @@ async function loadProduct() {
     
     if (res.data.code === 0) {
       product.value = res.data.data;
+      isFavorited.value = res.data.data.is_favorited ?? false;
       
       // 记录浏览行为
       if (userStore.token) {
@@ -172,13 +173,9 @@ async function toggleFavorite() {
   }
 
   try {
-    await apiAddBehavior({
-      product_id: product.value.id,
-      behavior_type: "favorite",
-      value: isFavorited.value ? 0 : 1
-    });
-    
-    isFavorited.value = !isFavorited.value;
+    const nextFavorite = !isFavorited.value;
+    await apiToggleFavorite(product.value.id, nextFavorite);
+    isFavorited.value = nextFavorite;
     ElMessage.success(isFavorited.value ? "收藏成功" : "取消收藏");
   } catch (error) {
     console.error("收藏操作失败:", error);

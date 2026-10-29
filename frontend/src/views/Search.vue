@@ -90,7 +90,7 @@ async function loadCategories() {
   try {
     const res = await apiListCategories();
     if (res.data.code === 0) {
-      categories.value = res.data.data.items.map(c => c.name);
+      categories.value = res.data.data.items || [];
     }
   } catch (error) {
     console.error("加载品类失败:", error);
@@ -104,7 +104,7 @@ async function onSearch() {
       page_size: 20
     };
     
-    if (form.keyword) params.keyword = form.keyword;
+    if (form.keyword) params.q = form.keyword;
     if (form.category) params.category = form.category;
     if (form.min_price) params.min_price = parseFloat(form.min_price);
     if (form.max_price) params.max_price = parseFloat(form.max_price);

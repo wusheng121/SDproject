@@ -12,7 +12,14 @@
         <div class="profile-info">
           <h3 class="username">{{ userStore.profile?.username || '未登录' }}</h3>
           <p class="user-email">{{ userStore.profile?.email || '暂无邮箱' }}</p>
+          <p class="user-email">
+            {{ userStore.profile?.phone || '未绑定手机号' }}
+            <el-tag v-if="userStore.profile?.email_verified" type="success" size="small">
+              邮箱已验证
+            </el-tag>
+          </p>
         </div>
+        <el-button @click="openEditProfile">编辑资料</el-button>
       </div>
 
       <el-divider />
@@ -98,6 +105,21 @@
 
     <!-- 兴趣标签选择对话框 -->
     <PreferenceDialog v-model="showPreferenceDialog" @saved="onPreferenceSaved" />
+
+    <el-dialog v-model="showEditProfile" title="编辑资料" width="420px">
+      <el-form label-width="80px">
+        <el-form-item label="用户名">
+          <el-input v-model="profileForm.username" />
+        </el-form-item>
+        <el-form-item label="手机号">
+          <el-input v-model="profileForm.phone" placeholder="留空表示不修改" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showEditProfile = false">取消</el-button>
+        <el-button type="primary" :loading="savingProfile" @click="saveProfile">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -106,13 +128,16 @@ import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import { useUserStore } from "../stores/user";
-import { apiGetPreferences } from "../api/user";
+import { apiGetPreferences, apiUpdateProfile, apiUserStats } from "../api/user";
 import PreferenceDialog from "../components/PreferenceDialog.vue";
 
 const router = useRouter();
 const userStore = useUserStore();
 
 const showPreferenceDialog = ref(false);
+const showEditProfile = ref(false);
+const savingProfile = ref(false);
+const profileForm = ref({ username: "", phone: "" });
 const preferences = ref([]);
 const stats = ref({
   favorites: 0,
@@ -128,17 +153,44 @@ async function loadUserData() {
 
     // 加载偏好品类
     const prefResp = await apiGetPreferences();
-    preferences.value = prefResp?.data?.preferred_categories || [];
-    stats.value.categories = preferences.value.length;
+    preferences.value = prefResp?.data?.data?.preferred_categories || [];
 
-    // TODO: 加载用户统计数据
-    // 需要后端提供统计接口
-    // - 收藏商品数量
-    // - 发布商品数量
-    // - 行为记录数量
-    
+    const statsResp = await apiUserStats();
+    stats.value = {
+      favorites: statsResp?.data?.data?.favorites || 0,
+      products: statsResp?.data?.data?.products || 0,
+      behaviors: statsResp?.data?.data?.behaviors || 0,
+      categories: statsResp?.data?.data?.categories ?? preferences.value.length
+    };
   } catch (err) {
     console.error("加载用户数据失败", err);
+  }
+}
+
+function openEditProfile() {
+  profileForm.value = {
+    username: userStore.profile?.username || "",
+    phone: ""
+  };
+  showEditProfile.value = true;
+}
+
+async function saveProfile() {
+  savingProfile.value = true;
+  try {
+    const payload = { username: profileForm.value.username };
+    if (profileForm.value.phone.trim()) {
+      payload.phone = profileForm.value.phone.trim();
+    }
+    const resp = await apiUpdateProfile(payload);
+    userStore.profile = resp?.data?.data?.user || userStore.profile;
+    ElMessage.success("资料已更新");
+    showEditProfile.value = false;
+    await loadUserData();
+  } catch (error) {
+    console.error("更新资料失败", error);
+  } finally {
+    savingProfile.value = false;
   }
 }
 

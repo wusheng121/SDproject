@@ -1,0 +1,314 @@
+openapi: 3.0.3
+info:
+  title: Campus Second-hand Market API
+  version: 1.0.0
+  description: |
+    Member A scope: authentication, RBAC, user profile, admin and agent read-only access.
+    Product CRUD, recommendation, AI recognition, orders and reviews are owned by other modules
+    and are intentionally not part of this document.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: array, items: { type: string } }
+            trace_id: { type: string }
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        email: { type: string }
+        user_type: { type: string, enum: [normal_user, admin, agent_service] }
+        phone: { type: string, nullable: true, example: "138****8000" }
+        email_verified: { type: boolean }
+        is_active: { type: boolean }
+        roles: { type: array, items: { type: string } }
+        permissions: { type: array, items: { type: string } }
+  responses:
+    Unauthorized:
+      description: Missing or expired access token
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: Authenticated but lacks permission
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    ValidationError:
+      description: Invalid request
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+paths:
+  /auth/register:
+    post:
+      summary: Register a normal user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, email, password]
+              properties:
+                username: { type: string, minLength: 3, maxLength: 50 }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                phone: { type: string, nullable: true }
+      responses:
+        "201": { description: Registered }
+        "409": { description: Username, email or phone already exists }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /auth/login:
+    post:
+      summary: Password login, returns access token and sets HttpOnly refresh cookie
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [identifier, password]
+              properties:
+                identifier: { type: string }
+                password: { type: string }
+                remember: { type: boolean }
+      responses:
+        "200":
+          description: Logged in
+          headers:
+            Set-Cookie:
+              schema: { type: string }
+        "401": { description: Invalid credentials }
+        "429": { description: Rate limited or locked }
+  /auth/refresh:
+    post:
+      summary: Rotate refresh token and return a new access token
+      security: []
+      responses:
+        "200": { description: New access token }
+        "401": { description: Refresh token invalid or reused }
+  /auth/logout:
+    post:
+      summary: Revoke current refresh session
+      security: []
+      responses:
+        "200": { description: Logged out }
+  /auth/logout-all:
+    post:
+      summary: Revoke all refresh sessions for the current user
+      responses:
+        "200": { description: All sessions revoked }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /auth/verify-email:
+    post:
+      summary: Verify email with a one-time token
+      security: []
+      responses:
+        "200": { description: Email verified }
+        "400": { description: Invalid or expired token }
+  /auth/resend-verification:
+    post:
+      summary: Resend email verification link
+      responses:
+        "200": { description: Verification email sent or already verified }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /auth/me:
+    get:
+      summary: Current authenticated user
+      responses:
+        "200": { description: User with roles and permissions }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /auth/forgot-password:
+    post:
+      summary: Request a password reset email
+      security: []
+      responses:
+        "200": { description: Generic response to prevent account enumeration }
+  /auth/reset-password:
+    post:
+      summary: Reset password with a one-time token
+      security: []
+      responses:
+        "200": { description: Password reset and sessions revoked }
+  /users/me:
+    get:
+      summary: Current user profile
+      responses:
+        "200": { description: Profile with roles and permissions }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    patch:
+      summary: Update username, email or phone
+      responses:
+        "200": { description: Updated profile, phone masked }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+  /users/me/preferences:
+    get:
+      summary: Read preferred categories
+      responses:
+        "200": { description: Preferences }
+    put:
+      summary: Replace preferred categories
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [categories]
+              properties:
+                categories: { type: array, items: { type: string } }
+      responses:
+        "200": { description: Preferences saved }
+  /users/me/stats:
+    get:
+      summary: Current user counters
+      responses:
+        "200": { description: Favorites, behaviors, products, preferences }
+  /users/me/api-keys:
+    get:
+      summary: List active API keys
+      responses:
+        "200": { description: API keys without secrets }
+    post:
+      summary: Create an API key (agent_service or admin only)
+      responses:
+        "201": { description: Full key returned once }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /users/me/api-keys/{key_id}:
+    delete:
+      summary: Revoke an API key owned by the current user
+      parameters:
+        - { in: path, name: key_id, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: API key revoked }
+        "404": { description: Key not found }
+  /admin/users:
+    get:
+      summary: Paginated user management
+      parameters:
+        - { in: query, name: page, schema: { type: integer, default: 1 } }
+        - { in: query, name: page_size, schema: { type: integer, default: 20, maximum: 100 } }
+        - { in: query, name: keyword, schema: { type: string } }
+        - { in: query, name: role, schema: { type: string } }
+        - { in: query, name: status, schema: { type: string, enum: [active, banned] } }
+      responses:
+        "200": { description: Users with pagination }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/users/{user_id}:
+    get:
+      summary: Get a single user
+      parameters:
+        - { in: path, name: user_id, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: User with roles and permissions }
+        "404": { description: User not found }
+  /admin/users/{user_id}/ban:
+    post:
+      summary: Disable a user and revoke all sessions and API keys
+      parameters:
+        - { in: path, name: user_id, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: User banned }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /admin/users/{user_id}/unban:
+    post:
+      summary: Re-enable a user
+      parameters:
+        - { in: path, name: user_id, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: User unbanned }
+        "404": { description: User not found }
+  /admin/users/{user_id}/roles:
+    put:
+      summary: Replace user roles and synchronize user_type
+      parameters:
+        - { in: path, name: user_id, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [roles]
+              properties:
+                roles: { type: array, items: { type: string } }
+      responses:
+        "200": { description: Roles updated }
+  /admin/products:
+    get:
+      summary: List products for audit
+      parameters:
+        - { in: query, name: status, schema: { type: string, enum: [pending, approved, rejected, offline, sold] } }
+      responses:
+        "200": { description: Products with pagination }
+  /admin/products/{product_id}/approve:
+    post:
+      summary: Approve a pending product
+      parameters:
+        - { in: path, name: product_id, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Product approved }
+        "409": { description: Invalid state transition }
+  /admin/products/{product_id}/reject:
+    post:
+      summary: Reject a product with a required reason
+      parameters:
+        - { in: path, name: product_id, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Product rejected }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /admin/products/{product_id}/offline:
+    post:
+      summary: Take an approved product offline
+      parameters:
+        - { in: path, name: product_id, required: true, schema: { type: integer } }
+      responses:
+        "200": { description: Product offline }
+  /admin/operation-logs:
+    get:
+      summary: Read-only audit log
+      responses:
+        "200": { description: Audit entries with pagination }
+  /admin/stats:
+    get:
+      summary: Platform counters
+      responses:
+        "200": { description: Users, products, behaviors, orders }
+  /agent/products:
+    get:
+      summary: Agent read-only product query
+      security:
+        - apiKeyAuth: []
+      responses:
+        "200": { description: Approved products }
+        "401": { description: Invalid API key or scope }
+  /agent/recommendations:
+    get:
+      summary: Agent read-only recommendation query
+      security:
+        - apiKeyAuth: []
+      responses:
+        "200": { description: Recommendation payload }

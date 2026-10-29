@@ -1,202 +1,345 @@
-## 电影推荐系统（课程项目）- 快速开始
+# 校园二手交易平台
 
-本仓库包含：
-- **backend/**：Flask + SQLite（API 服务）
-- **frontend/**：Vue 3 + Vite + Vue Router + Element Plus（前端页面）
+AI 拍照识物与智能推荐的校园二手交易平台，采用 Vue 3 + Flask + MySQL + Redis 的前后端分离架构。
 
-## 在线部署（推荐：Vercel 前端 + Render 后端）
+## 目录
 
-本项目已经适配为前后端分离部署：
-- 前端部署到 **Vercel**
-- 后端部署到 **Render**
-- 部署完成后，老师和同学可以直接通过前端公网网址访问
+- `backend/`：Flask API、认证会话、RBAC、管理后台接口、Alembic 迁移
+- `frontend/`：Vue 3 + Element Plus + Vite
+- `docs/`：需求、实现 Schema、OpenAPI、ADR 与运维文档
+- `docs/README.md`：文档索引与权威层级
+- `docker-compose.yml`：本地 MySQL、Redis、MailHog、后端、前端
 
-### 一、部署前准备
+## 环境要求
 
-1. 先将整个项目推送到 GitHub。
-2. 确保前端和后端目录结构保持不变：
-   - `frontend/`
-   - `backend/`
-3. 前端生产环境接口地址通过环境变量 `VITE_API_BASE_URL` 配置。
-4. 后端跨域白名单通过环境变量 `CORS_ORIGINS` 配置。
+- Python 3.12+
+- Node.js 18+ 或 20+
+- MySQL 8.0+
+- Redis 7+
+- Docker Desktop（可选，推荐用于本地基础服务）
 
-### 二、部署后端到 Render
+Windows PowerShell 如果提示 `npm.ps1 cannot be loaded`，统一使用 `npm.cmd` 代替 `npm`。
 
-在 Render 中创建一个新的 **Web Service**，并选择当前仓库。
+## 环境变量
 
-推荐配置如下：
-- **Root Directory**: `backend`
-- **Runtime**: `Python`
-- **Build Command**: `pip install -r requirements.txt`
-- **Start Command**: `gunicorn app:app`
+后端配置位于 `backend/.env`，可从 `backend/.env.example` 复制：
 
-后端环境变量建议配置：
-- `SECRET_KEY`：随机字符串
-- `JWT_EXPIRE_SECONDS`：`86400`
-- `CORS_ORIGINS`：你的前端域名，例如 `https://your-project.vercel.app`
-- `TMDB_API_KEY`：如果需要在线补全 TMDB 数据再配置
-
-仓库根目录提供了可选的 Render 配置文件：
-- `render.yaml`
-
-后端部署完成后，记下你的公网地址，例如：
-- `https://your-backend.onrender.com`
-
-健康检查地址：
-- `https://your-backend.onrender.com/api/health`
-
-### 三、部署前端到 Vercel
-
-在 Vercel 中导入当前仓库。
-
-推荐配置如下：
-- **Framework Preset**: `Vite`
-- **Root Directory**: `frontend`
-- **Build Command**: `npm run build`
-- **Output Directory**: `dist`
-
-前端环境变量：
-- `VITE_API_BASE_URL=https://your-backend.onrender.com/api`
-
-项目已包含：
-- `frontend/vercel.json`
-
-它会将 Vue Router 的前端路由统一回退到 `index.html`，避免刷新页面时出现 404。
-
-前端部署完成后，你会得到一个固定网址，例如：
-- `https://your-project.vercel.app`
-
-这个网址就是老师和同学访问的地址。
-
-### 四、以后如何更新线上项目
-
-如果你后续修改了项目，只需要：
-
-```bash
-git add .
-git commit -m "update project"
-git push
+```powershell
+cd D:\aWusheng\SDproject\backend
+Copy-Item .env.example .env
 ```
 
-如果 Vercel 和 Render 已连接 GitHub：
-- 平台会自动重新部署
-- **网址通常不变**
-- 访问到的内容会更新为最新版本
+主要配置：
 
-### 五、本地开发与线上部署的区别
+| 变量 | 说明 | 示例 |
+|---|---|---|
+| `APP_ENV` | 运行环境 | `development` / `testing` / `production` |
+| `SECRET_KEY` | JWT/会话签名密钥，生产必须至少 32 字节 | 随机 hex 字符串 |
+| `DATABASE_URL` | MySQL 连接串 | `mysql+pymysql://campus:campus@127.0.0.1:3307/campus_market?charset=utf8mb4` |
+| `REDIS_URL` | Redis 连接串 | `redis://127.0.0.1:6379/0` |
+| `RATELIMIT_STORAGE_URI` | 限流存储 | `redis://127.0.0.1:6379/1` |
+| `CORS_ORIGINS` | 允许的前端源，逗号分隔 | `http://localhost:5173,http://127.0.0.1:5173` |
+| `FRONTEND_URL` | 邮件链接使用的前端地址 | `http://localhost:5173` |
+| `JWT_ACCESS_TTL_SECONDS` | Access Token 有效期 | `900` |
+| `JWT_REFRESH_TTL_SECONDS` | Refresh Token 有效期 | `2592000` |
+| `BCRYPT_COST` | BCrypt 成本 | 生产 `12` |
+| `PHONE_ENC_KEY` | 手机号加密密钥 | Fernet key |
+| `PHONE_HASH_KEY` | 手机号盲索引 HMAC 密钥 | 随机 hex 字符串 |
+| `REFRESH_COOKIE_SECURE` | 生产 HTTPS 下设为 `true` | `false`（本地） |
+| `REFRESH_COOKIE_SAMESITE` | Cookie SameSite | `Lax` |
+| `SMTP_HOST` / `SMTP_PORT` | 邮件服务 | 本地 MailHog：`127.0.0.1:1025` |
+| `LOG_LEVEL` | 日志级别 | `INFO` |
+| `SENTRY_DSN` | Sentry DSN，可选 | 空 |
 
-本地开发时：
-- 前端通过 `vite.config.js` 中的代理，把 `/api` 转发到 `http://127.0.0.1:5000`
+生成密钥：
 
-线上部署时：
-- 前端直接通过 `VITE_API_BASE_URL` 请求 Render 上的后端接口
+```powershell
+python -c "import secrets; print(secrets.token_hex(32))"
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+```
 
-### 六、示例环境变量文件
+`SECRET_KEY` 和 `PHONE_HASH_KEY` 使用第一行输出；`PHONE_ENC_KEY` 使用第二行输出。
 
-- 前端示例：`frontend/.env.example`
-- 后端示例：`backend/.env.example`
+### 前端环境变量
 
-### 七、说明
+前端配置位于 `frontend/.env`，可从 `frontend/.env.example` 复制：
 
-- Render 免费服务可能会休眠，首次访问可能需要等待几十秒唤醒。
-- 如果你使用的是 Render 免费实例，答辩前建议先打开一次后端和前端链接，避免现场首次冷启动等待。
+```powershell
+cd D:\aWusheng\SDproject\frontend
+Copy-Item .env.example .env
+```
 
-### 1) 启动后端（Flask）
+| 变量 | 说明 | 本地示例 |
+|---|---|---|
+| `VITE_API_BASE_URL` | 后端 API 根地址 | `http://127.0.0.1:5000/api` |
 
-进入后端目录并安装依赖：
+本地开发也可以不创建该文件，Vite 会通过 `vite.config.js` 的 `/api` 代理访问 `http://127.0.0.1:5000`。
 
-```bash
-cd backend
+## 本地部署
+
+### 方式一：Docker Compose 全栈
+
+确保 Docker Desktop 已启动，且 `docker version` 能正常返回：
+
+```powershell
+cd D:\aWusheng\SDproject
+docker compose up --build
+```
+
+服务地址：
+
+- 前端：http://localhost:5173
+- 后端：http://localhost:5000
+- 健康检查：http://localhost:5000/health/ready
+- MailHog：http://localhost:8025
+
+Compose 中 MySQL 映射到 `127.0.0.1:3307`，避免占用本机 3306。后端容器启动时会执行迁移并写入演示数据。
+
+常用命令：
+
+```powershell
+docker compose ps
+docker compose logs -f backend
+docker compose logs -f frontend
+docker compose down
+docker compose down -v   # 同时删除 MySQL 数据卷，谨慎使用
+```
+
+### 方式二：基础服务用 Docker，前后端在宿主机运行（推荐开发）
+
+这种方式支持后端自动重载和前端 Vite HMR。
+
+1. 启动基础服务：
+
+```powershell
+cd D:\aWusheng\SDproject
+docker compose up -d mysql redis mailhog
+```
+
+2. 启动后端：
+
+```powershell
+cd D:\aWusheng\SDproject\backend
 python -m venv .venv
-# Windows PowerShell:
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
+Copy-Item .env.example .env
+flask --app app db upgrade
+flask --app app seed-demo
+flask --app app run --debug --port 5000
 ```
 
-启动服务（默认 `http://127.0.0.1:5000`）：
+使用 `flask --app app run --debug` 才会开启自动重载；`python app.py` 是关闭 debug 的启动方式。
 
-```bash
-python app.py
+3. 启动前端：
+
+```powershell
+cd D:\aWusheng\SDproject\frontend
+npm.cmd install
+npm.cmd run dev
 ```
 
-接口健康检查：
-- `GET /api/health`
+前端 Vite 会把 `/api` 代理到 `http://127.0.0.1:5000`。
 
-可选：初始化演示数据（用于答辩展示）
+### 方式三：使用本机 MySQL
 
-```bash
-python -m seed.seed_demo
+将 `backend/.env` 的 `DATABASE_URL` 改为本机 MySQL，例如：
+
+```text
+mysql+pymysql://campus:campus@127.0.0.1:3306/campus_market?charset=utf8mb4
 ```
 
-导入真实电影数据（推荐 MovieLens）
+首次需要创建数据库和用户：
 
-- 先看说明：`data/README.md`
-- 然后导入（在 backend 目录下执行）：
-
-```bash
-python -m seed.import_movielens --movies ..\data\movies.csv
+```sql
+CREATE DATABASE campus_market CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE USER 'campus'@'%' IDENTIFIED BY 'campus';
+GRANT ALL PRIVILEGES ON campus_market.* TO 'campus'@'%';
+FLUSH PRIVILEGES;
 ```
 
-补全电影数据（简介/海报/演员，使用 TMDB）
+然后执行迁移和 seed。
 
-- 你需要先去 TMDB 申请 API Key（免费即可）：`https://www.themoviedb.org/settings/api`
-- PowerShell 设置环境变量（在 backend 目录下执行）：
+## 数据库初始化与同步
 
-```bash
-$env:TMDB_API_KEY="你的key"
-python -m seed.enrich_tmdb --limit 200
+表结构通过 Alembic 管理，不要手动改生产表。
+
+```powershell
+cd D:\aWusheng\SDproject\backend
+flask --app app db upgrade
 ```
 
-### 2) 启动前端（Vue 3 + Vite）
+演示数据：
 
-进入前端目录并安装依赖：
-
-```bash
-cd frontend
-npm install
+```powershell
+flask --app app seed-demo
 ```
 
-启动开发服务器（默认 `http://127.0.0.1:5173`）：
+当前 seed 包含：
 
-```bash
-npm run dev
+- 3 个演示账号
+- 3 个角色、12 个权限
+- 31 个品类、47 个商品
+- 商品按名称幂等插入，重复执行不会产生重复商品
+
+生产环境不执行 `seed-demo`，使用一次性管理员初始化：
+
+```powershell
+$env:ADMIN_USERNAME="admin"
+$env:ADMIN_EMAIL="admin@example.com"
+$env:ADMIN_PASSWORD="Admin12345"
+flask --app app bootstrap-admin
 ```
 
-说明：
-- 前端已在 `vite.config.js` 配置了 **`/api` 代理**到后端 `http://127.0.0.1:5000`，因此前端请求直接写 `/api/...` 即可。
+### 协作者如何同步数据
 
-### 3) 机器学习模块（矩阵分解推荐系统）
+- Schema：提交 Alembic 迁移，其他成员 `git pull` 后执行 `flask db upgrade`。
+- 演示/字典数据：写入 `backend/seed/init_products.py`，提交代码后执行 `flask --app app seed-demo`。
+- 真实数据：使用 `mysqldump` 或共享开发数据库，不要提交 Git。
 
-**位置**: `backend/ml/`
+备份：
 
-**功能**: 基于矩阵分解（Matrix Factorization）的协同过滤推荐，适用于用户有充足行为数据（评分≥10）的场景（策略 D）。
+```powershell
+mysqldump -h 127.0.0.1 -P 3307 -u campus -pcampus campus_market > campus_market.sql
+```
 
-**四步实现流程**:
+恢复：
 
-1. **步骤一：数据准备** 
-   ```bash
-   cd backend
-   python -m ml.prepare_data --input ..\data\ml-latest-small\ratings.csv --output ..\data\output1\
-   ```
-   生成 `ratings_train.csv` 和 `ratings_test.csv`（训练/测试集）
+```powershell
+cmd /c "mysql -h 127.0.0.1 -P 3307 -u campus -pcampus campus_market < campus_market.sql"
+```
 
-2. **步骤二：模型训练** 
-   ```bash
-   python -m ml.train_mf --train ..\data\output1\ratings_train.csv --test ..\data\output1\ratings_test.csv --output ..\data\output2\
-   ```
-   生成 `als_model.pkl`（训练好的 ALS 矩阵分解模型）
-   
-   **测试模型**：
-   ```bash
-   python -m ml.test_model --model ..\data\output2\als_model.pkl
-   ```
+SQL 文件可能包含用户、手机号和行为数据，不要提交 Git。
 
-3. **步骤三：模型集成** 
-   
-4. **步骤四：API 接入** 
+## 演示账号
 
-详细文档：`backend/ml/README.md`
+仅开发环境：
 
+- 普通用户：`testuser / Test12345`
+- 管理员：`admin / Admin12345`
+- Agent：`agent / Agent12345`
 
+连续输错密码 5 次会锁定 15 分钟。需要解锁时可由管理员处理，或开发环境执行：
 
+```sql
+UPDATE users
+SET failed_login_count = 0, locked_until = NULL
+WHERE username = 'testuser';
+```
 
+## 测试
+
+后端静态检查与单元/集成测试：
+
+```powershell
+cd D:\aWusheng\SDproject\backend
+ruff check app.py auth.py config.py extensions.py models.py routes utils seed tests
+pytest -q
+```
+
+使用 MySQL 测试库：
+
+```powershell
+$env:APP_ENV="testing"
+$env:TEST_DATABASE_URL="mysql+pymysql://campus:campus@127.0.0.1:3307/campus_market_test?charset=utf8mb4"
+python -m pytest -q
+```
+
+前端生产构建：
+
+```powershell
+cd D:\aWusheng\SDproject\frontend
+npm.cmd run build
+```
+
+## 认证与权限
+
+- 注册/登录：`/api/v1/auth/*`
+- Access Token：仅保存在内存
+- Refresh Token：HttpOnly Cookie，轮换、重放检测、支持吊销
+- RBAC：`normal_user`、`admin`、`agent_service`
+- Agent：API Key + scopes，只读
+- 手机号：加密存储、盲索引查询、接口脱敏
+
+普通用户与 Agent 的区别：
+
+- 普通用户：Web 登录，可浏览、发布/编辑/下架自己的商品、收藏、下单、评价
+- Agent：机器账号，通过 `X-API-Key` 只读查询商品与推荐，不能写数据
+- Agent 调用会记录审计日志
+
+## 生产部署要点
+
+- 使用 Docker 镜像 + Gunicorn，不使用 Flask 开发服务器
+- 使用托管 MySQL 8 与 Redis
+- `APP_ENV=production`
+- `SECRET_KEY` 至少 32 字节
+- `REFRESH_COOKIE_SECURE=true`
+- `CORS_ORIGINS` 配置真实前端域名，禁止 `*`
+- 迁移作为发布步骤执行，不在应用启动时自动建表
+- 不执行 `seed-demo`
+- 配置 SMTP、Sentry、备份与监控
+- 发布前验证 `/health/ready`
+
+`render.yaml` 仅提供容器部署入口，真实部署仍需外接 MySQL/Redis，并配置环境变量。
+
+## 常见问题
+
+### npm 命令被 PowerShell 拦截
+
+使用：
+
+```powershell
+npm.cmd run dev
+npm.cmd run build
+```
+
+### Docker 命令卡住或连接失败
+
+确认 Docker Desktop 显示 Engine running，并执行：
+
+```powershell
+docker version
+```
+
+如果仍不可用，可以先使用本机 MySQL，或将前后端直接跑在宿主机。
+
+### 登录后刷新页面掉登录态
+
+检查：
+
+- `CORS_ORIGINS` 是否包含当前访问地址，例如 `http://127.0.0.1:5173`
+- 是否同时使用 `localhost` 和 `127.0.0.1` 混用
+- 浏览器是否拦截了 Cookie
+- 后端是否已用最新 `.env` 重启
+
+### PyJWT 提示 InsecureKeyLengthWarning
+
+`SECRET_KEY` 太短。重新生成至少 32 字节的密钥并重启后端：
+
+```powershell
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+### 商品列表为空
+
+先确认接口：
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:5000/api/products?page_size=12"
+```
+
+如果接口有数据但页面为空，按 `Ctrl+F5` 强制刷新，避免旧前端模块缓存。
+
+## 文档
+
+文档入口：`docs/README.md`
+
+- `需求文档.docx`：最终提交版需求，仅本地保留，不入库
+- `docs/需求文档_完整版.md`：仓库内工程需求说明
+- `docs/database/schema.md`：当前实现层 Schema 与 ER 图
+- `docs/api/openapi.yaml`：成员A范围 API 契约
+- `docs/adr/0001-production-baseline.md`：生产基线与技术决策
+- `docs/operations/runbook.md`：发布、备份、回滚与安全事件处理
+- `docs/需求文档图表.md`：需求阶段图表源
+
+`需求文档.docx` 是最终提交版，不随 Git 分发；协作者使用 Markdown 工程说明和实现 ER。

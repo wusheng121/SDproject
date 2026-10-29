@@ -1,6 +1,6 @@
 """用户行为路由 - 收藏、浏览等行为记录"""
+
 from flask import Blueprint, request
-from datetime import datetime
 
 from auth import login_required
 from extensions import db

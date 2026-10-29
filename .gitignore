@@ -52,3 +52,26 @@ Thumbs.db
 
 
 
+
+# ---- Local secrets / test artifacts ----
+.env
+.env.*
+!.env.example
+backend/.env
+backend/test.db
+backend/*.db
+.coverage
+htmlcov/
+test-results/
+playwright-report/
+
+# ---- Personal development documents (not for Git) ----
+TODOLIST.md
+刘博文*.md
+
+# ---- Final submission artifact (kept locally only) ----
+/需求文档.docx
+
+# ---- Runtime logs ----
+*.log
+backend/*.log

@@ -1,10 +1,10 @@
 """商品相关路由 - 从 movie_routes.py 改造而来"""
-from sqlalchemy import func
 from flask import Blueprint, request
+from sqlalchemy import func
 
-from auth import login_required, current_user
+from auth import current_user, login_required
 from extensions import db
-from models import Product, Category, ProductCategory, UserBehavior
+from models import Category, Product, ProductCategory, UserBehavior
 from utils.response import err, ok
 
 product_bp = Blueprint("product_bp", __name__, url_prefix="/api")
@@ -44,6 +44,10 @@ def list_products():
 
     # 只显示已审核通过的商品
     q = q.filter(Product.status == "approved")
+
+    q_text = (request.args.get("q") or request.args.get("keyword") or "").strip()
+    if q_text:
+        q = q.filter(Product.name.ilike(f"%{q_text}%"))
 
     # 筛选条件
     if category:

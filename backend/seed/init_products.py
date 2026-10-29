@@ -1,209 +1,245 @@
-"""
-初始化商品数据和 RBAC 权限数据
-运行方式：python backend/seed/init_products.py
-"""
-import sys
-import os
+from datetime import datetime
 
-# 添加项目根目录到路径
-current_dir = os.path.dirname(os.path.abspath(__file__))
-backend_dir = os.path.dirname(current_dir)
-project_root = os.path.dirname(backend_dir)
-sys.path.insert(0, project_root)
-sys.path.insert(0, backend_dir)
+from flask import current_app
 
-from app import app
 from extensions import db
-from models import User, Product, Category, ProductCategory, Role, Permission, UserRole, RolePermission
-from werkzeug.security import generate_password_hash
+from models import (
+    Category,
+    Permission,
+    Product,
+    ProductCategory,
+    Role,
+    RolePermission,
+    User,
+    UserRole,
+)
+from utils.security import hash_password
+
+PERMISSIONS = [
+    ("product:view", "查看商品"),
+    ("product:publish", "发布商品"),
+    ("product:edit", "编辑商品"),
+    ("product:delete", "删除商品"),
+    ("product:audit", "审核/下架商品"),
+    ("user:manage", "管理用户"),
+    ("recommendation:query", "查询推荐"),
+    ("behavior:write", "记录用户行为"),
+    ("order:create", "创建订单"),
+    ("review:write", "提交评价"),
+    ("admin:log", "查看操作日志"),
+    ("admin:stats", "查看平台统计"),
+]
+
+ROLES = {
+    "normal_user": {
+        "description": "普通用户",
+        "permissions": [
+            "product:view",
+            "product:publish",
+            "product:edit",
+            "product:delete",
+            "recommendation:query",
+            "behavior:write",
+            "order:create",
+            "review:write",
+        ],
+    },
+    "admin": {
+        "description": "平台管理员",
+        "permissions": [
+            "product:view",
+            "product:audit",
+            "user:manage",
+            "recommendation:query",
+            "admin:log",
+            "admin:stats",
+        ],
+    },
+    "agent_service": {
+        "description": "Agent 服务账号",
+        "permissions": ["product:view", "recommendation:query"],
+    },
+}
+
+CATEGORIES = [
+    "保温杯",
+    "运动鞋",
+    "手机",
+    "耳机",
+    "T恤",
+    "鼠标",
+    "键盘",
+    "台灯",
+    "书籍",
+    "自行车",
+    "平板",
+    "相机",
+    "音箱",
+    "游戏机",
+    "显示器",
+    "充电宝",
+    "外套",
+    "裤子",
+    "背包",
+    "行李箱",
+    "篮球",
+    "羽毛球拍",
+    "吉他",
+    "护肤品",
+    "收纳盒",
+    "小风扇",
+    "电饭煲",
+    "吹风机",
+    "插线板",
+    "学习桌",
+    "椅子",
+]
+
+PRODUCTS = [
+    ("保温杯 500ml 蓝色", "品牌保温杯，保温效果好", 35.0, "九成新", "保温杯"),
+    ("耐克运动鞋 42码", "正品耐克跑鞋", 180.0, "八成新", "运动鞋"),
+    ("iPhone 12 128G", "自用 iPhone，无磕碰", 2800.0, "九五新", "手机"),
+    ("AirPods Pro", "闲置未拆封", 800.0, "全新", "耳机"),
+    ("优衣库 T恤 L码", "纯棉 T恤", 25.0, "九成新", "T恤"),
+    ("罗技 MX Master 3", "经典办公鼠标", 320.0, "九成新", "鼠标"),
+    ("机械键盘青轴", "樱桃青轴", 150.0, "八成新", "键盘"),
+    ("飞利浦护眼台灯", "无频闪台灯", 120.0, "九成新", "台灯"),
+    ("算法导论（第三版）", "经典算法教材", 45.0, "八成新", "书籍"),
+    ("捷安特山地车", "21 速山地车", 600.0, "七成新", "自行车"),
+    ("iPad 9 64G", "上网课用，屏幕无划痕，附保护壳", 1800.0, "九成新", "平板"),
+    ("小米平板 5", "6+128G，看视频和记笔记都很流畅", 950.0, "八成新", "平板"),
+    ("索尼 A6000 微单", "套机 16-50mm，快门数不高", 2200.0, "九成新", "相机"),
+    ("佳能 50mm 定焦镜头", "f/1.8 小痰盂，成色好", 600.0, "八成新", "相机"),
+    ("JBL 蓝牙音箱", "音质不错，续航正常", 180.0, "九成新", "音箱"),
+    ("小爱音箱 mini", "宿舍用，功能正常", 60.0, "八成新", "音箱"),
+    ("Switch OLED", "白色款，含底座和手柄", 1500.0, "九五新", "游戏机"),
+    ("PS4 Slim 500G", "含一个原装手柄，可试机", 1100.0, "八成新", "游戏机"),
+    ("戴尔 24 寸显示器", "1080P IPS，办公学习够用", 500.0, "九成新", "显示器"),
+    ("小米 27 寸显示器", "2K 分辨率，轻微使用痕迹", 800.0, "九成新", "显示器"),
+    ("罗马仕 20000mAh 充电宝", "大容量，支持双向快充", 70.0, "九成新", "充电宝"),
+    ("安克 65W 氮化镓充电器", "小巧便携，可充笔记本", 90.0, "九成新", "充电宝"),
+    ("北面冲锋衣 L码", "防风防水，适合秋季", 350.0, "九成新", "外套"),
+    ("优衣库羽绒服 M码", "轻便保暖，无破损", 200.0, "八成新", "外套"),
+    ("李维斯牛仔裤 32码", "经典 501 版型", 120.0, "九成新", "裤子"),
+    ("耐克运动短裤 L码", "速干面料，适合跑步", 40.0, "八成新", "裤子"),
+    ("耐克双肩包", "可放 15 寸电脑，容量大", 150.0, "九成新", "背包"),
+    ("小米旅行箱 24 寸", "万向轮顺滑，密码锁正常", 220.0, "八成新", "行李箱"),
+    ("斯伯丁篮球", "7 号球，室内外可用", 80.0, "九成新", "篮球"),
+    ("尤尼克斯羽毛球拍", "碳素拍，送手胶", 260.0, "九成新", "羽毛球拍"),
+    ("雅马哈民谣吉他", "41 寸，适合入门", 450.0, "八成新", "吉他"),
+    ("兰蔻粉水 400ml", "全新未开封，专柜购入", 180.0, "全新", "护肤品"),
+    ("珂润面霜 40g", "敏感肌适用，剩余九成", 90.0, "九成新", "护肤品"),
+    ("无印良品收纳盒", "桌面收纳，带盖", 30.0, "九成新", "收纳盒"),
+    ("宿舍静音小风扇", "USB 供电，夜间不扰民", 35.0, "八成新", "小风扇"),
+    ("美的电饭煲 3L", "适合 2-4 人，内胆完好", 100.0, "九成新", "电饭煲"),
+    ("飞科吹风机", "大功率，冷热风正常", 60.0, "九成新", "吹风机"),
+    ("公牛插线板 5 位", "带独立开关，线长 3 米", 25.0, "九成新", "插线板"),
+    ("宜家学习桌", "120x60cm，可折叠", 150.0, "八成新", "学习桌"),
+    ("人体工学椅", "带腰托，宿舍自习用", 260.0, "八成新", "椅子"),
+    ("罗技 K380 蓝牙键盘", "可连三台设备，便携", 120.0, "九成新", "键盘"),
+    ("索尼 WH-1000XM4", "降噪耳机，配件齐全", 1200.0, "九五新", "耳机"),
+    ("小米 13 256G", "骁龙 8 Gen2，无拆修", 1800.0, "九成新", "手机"),
+    ("阿迪达斯运动鞋 40码", "三叶草经典款，尺码偏小", 150.0, "九成新", "运动鞋"),
+    ("象印保温杯 350ml", "保温效果好，杯身无磕碰", 90.0, "九成新", "保温杯"),
+    ("三体全集", "三册齐全，无笔记", 60.0, "九成新", "书籍"),
+    ("迪卡侬公路车", "适合通勤，刚做过保养", 900.0, "八成新", "自行车"),
+]
 
 
-def init_categories():
-    """初始化商品品类"""
-    categories = [
-        "保温杯", "运动鞋", "手机", "耳机", "T恤", "鼠标",
-        "键盘", "台灯", "书籍", "自行车"
-    ]
-    
-    existing = {c.name for c in Category.query.all()}
-    for name in categories:
-        if name not in existing:
-            db.session.add(Category(name=name))
-    
-    db.session.commit()
-    print(f"✅ 已初始化 {len(categories)} 个品类")
-
-
-def init_rbac():
-    """初始化 RBAC 角色和权限"""
-    # 创建权限
-    permissions = [
-        ("product:view", "查看商品"),
-        ("product:publish", "发布商品"),
-        ("product:edit", "编辑商品"),
-        ("product:delete", "删除商品"),
-        ("product:audit", "审核商品"),
-        ("user:manage", "管理用户"),
-        ("recommendation:query", "查询推荐"),
-        ("admin:log", "查看操作日志"),
-    ]
-    
+def seed_rbac():
     perm_map = {}
-    for name, desc in permissions:
-        p = Permission.query.filter_by(name=name).first()
-        if not p:
-            p = Permission(name=name, description=desc)
-            db.session.add(p)
-        perm_map[name] = p
-    
-    db.session.commit()
-    
-    # 创建角色
-    roles_config = {
-        "normal_user": {
-            "description": "普通用户",
-            "permissions": ["product:view", "product:publish", "product:edit", "product:delete", "recommendation:query"]
-        },
-        "admin": {
-            "description": "平台管理员",
-            "permissions": ["product:view", "product:audit", "user:manage", "admin:log", "recommendation:query"]
-        },
-        "agent_service": {
-            "description": "Agent服务账号",
-            "permissions": ["product:view", "recommendation:query"]
-        }
-    }
-    
-    for role_name, config in roles_config.items():
+    for name, description in PERMISSIONS:
+        permission = Permission.query.filter_by(name=name).first()
+        if not permission:
+            permission = Permission(name=name, description=description)
+            db.session.add(permission)
+            db.session.flush()
+        perm_map[name] = permission
+
+    for role_name, config in ROLES.items():
         role = Role.query.filter_by(name=role_name).first()
         if not role:
             role = Role(name=role_name, description=config["description"])
             db.session.add(role)
-            db.session.commit()
-        
-        # 清空旧权限
+            db.session.flush()
         RolePermission.query.filter_by(role_id=role.id).delete()
-        
-        # 添加新权限
-        for perm_name in config["permissions"]:
-            if perm_name in perm_map:
-                rp = RolePermission(role_id=role.id, permission_id=perm_map[perm_name].id)
-                db.session.add(rp)
-    
-    db.session.commit()
-    print(f"✅ 已初始化 {len(roles_config)} 个角色和 {len(permissions)} 个权限")
-
-
-def init_users():
-    """初始化测试用户"""
-    users_data = [
-        {"username": "testuser", "email": "test@example.com", "password": "123456", "user_type": "normal_user"},
-        {"username": "admin", "email": "admin@example.com", "password": "admin123", "user_type": "admin"},
-        {"username": "agent", "email": "agent@example.com", "password": "agent123", "user_type": "agent_service"},
-    ]
-    
-    for data in users_data:
-        user = User.query.filter_by(username=data["username"]).first()
-        if not user:
-            user = User(
-                username=data["username"],
-                email=data["email"],
-                password_hash=generate_password_hash(data["password"]),
-                user_type=data["user_type"]
+        for permission_name in config["permissions"]:
+            db.session.add(
+                RolePermission(role_id=role.id, permission_id=perm_map[permission_name].id)
             )
-            db.session.add(user)
-            db.session.commit()
-            
-            # 分配角色
-            role = Role.query.filter_by(name=data["user_type"]).first()
-            if role:
-                ur = UserRole(user_id=user.id, role_id=role.id)
-                db.session.add(ur)
-    
     db.session.commit()
-    print(f"✅ 已初始化 {len(users_data)} 个测试用户")
 
 
-def init_products():
-    """初始化商品数据"""
-    # 获取测试用户
+def seed_categories():
+    for name in CATEGORIES:
+        if not Category.query.filter_by(name=name).first():
+            db.session.add(Category(name=name))
+    db.session.commit()
+
+
+def _upsert_user(username, email, password, user_type, verified=True):
+    email = email.lower()
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        user = User(
+            username=username,
+            email=email,
+            email_normalized=email,
+            password_hash=hash_password(password),
+            user_type=user_type,
+            email_verified_at=datetime.utcnow() if verified else None,
+        )
+        db.session.add(user)
+        db.session.flush()
+    role = Role.query.filter_by(name=user_type).first()
+    if role and not UserRole.query.filter_by(user_id=user.id, role_id=role.id).first():
+        db.session.add(UserRole(user_id=user.id, role_id=role.id))
+    return user
+
+
+def seed_users():
+    _upsert_user("testuser", "test@example.com", "Test12345", "normal_user")
+    _upsert_user("admin", "admin@example.com", "Admin12345", "admin")
+    _upsert_user("agent", "agent@example.com", "Agent12345", "agent_service")
+    db.session.commit()
+
+
+def seed_products():
     seller = User.query.filter_by(username="testuser").first()
     if not seller:
-        print("❌ 请先初始化用户")
         return
-    
-    # 获取品类
-    categories = {c.name: c for c in Category.query.all()}
-    
-    products_data = [
-        {"name": "保温杯 500ml 蓝色", "price": 35.0, "condition": "九成新", "category": "保温杯", "desc": "品牌保温杯，保温效果好，外观完好"},
-        {"name": "耐克运动鞋 42码", "price": 180.0, "condition": "八成新", "category": "运动鞋", "desc": "正品耐克跑鞋，穿过几次，鞋底磨损轻微"},
-        {"name": "iPhone 12 128G", "price": 2800.0, "condition": "九五新", "category": "手机", "desc": "自用iPhone，无磕碰，电池健康度92%"},
-        {"name": "AirPods Pro", "price": 800.0, "condition": "全新", "category": "耳机", "desc": "闲置未拆封，官网购入"},
-        {"name": "优衣库T恤 L码", "price": 25.0, "condition": "九成新", "category": "T恤", "desc": "纯棉T恤，洗过一次，基本全新"},
-        {"name": "罗技 MX Master 3", "price": 320.0, "condition": "九成新", "category": "鼠标", "desc": "经典办公鼠标，功能完好"},
-        {"name": "机械键盘青轴", "price": 150.0, "condition": "八成新", "category": "键盘", "desc": "樱桃青轴，键帽有轻微磨损"},
-        {"name": "飞利浦护眼台灯", "price": 120.0, "condition": "九成新", "category": "台灯", "desc": "无频闪台灯，适合宿舍学习"},
-        {"name": "算法导论（第三版）", "price": 45.0, "condition": "八成新", "category": "书籍", "desc": "经典算法教材，有笔记"},
-        {"name": "捷安特山地车", "price": 600.0, "condition": "七成新", "category": "自行车", "desc": "21速山地车，车况良好"},
-        {"name": "小米保温杯 白色", "price": 28.0, "condition": "全新", "category": "保温杯", "desc": "全新未使用，活动赠品"},
-        {"name": "阿迪达斯运动鞋 40码", "price": 150.0, "condition": "九成新", "category": "运动鞋", "desc": "三叶草经典款，尺码偏小转让"},
-        {"name": "小米11 256G", "price": 1500.0, "condition": "九成新", "category": "手机", "desc": "骁龙888，性能强劲，无暗病"},
-        {"name": "索尼 WH-1000XM4", "price": 1200.0, "condition": "九五新", "category": "耳机", "desc": "降噪耳机天花板，配件齐全"},
-        {"name": "Champion卫衣 XL", "price": 80.0, "condition": "九成新", "category": "T恤", "desc": "正品Champion，厚实保暖"},
-        {"name": "雷蛇炼狱蝰蛇", "price": 180.0, "condition": "九成新", "category": "鼠标", "desc": "游戏鼠标，RGB灯效"},
-        {"name": "HHKB键盘", "price": 800.0, "condition": "九五新", "category": "键盘", "desc": "程序员神器，静电容键盘"},
-        {"name": "米家台灯 Pro", "price": 180.0, "condition": "全新", "category": "台灯", "desc": "智能台灯，支持米家APP"},
-        {"name": "深入理解计算机系统", "price": 55.0, "condition": "九成新", "category": "书籍", "desc": "CSAPP，无笔记，几乎全新"},
-        {"name": "永久折叠自行车", "price": 280.0, "condition": "八成新", "category": "自行车", "desc": "折叠便携，适合短途通勤"},
-    ]
-    
-    existing_count = Product.query.count()
-    if existing_count > 0:
-        print(f"ℹ️  已有 {existing_count} 个商品，跳过初始化")
-        return
-    
-    for data in products_data:
-        product = Product(
-            name=data["name"],
-            description=data["desc"],
-            price=data["price"],
-            condition=data["condition"],
-            status="approved",  # 已审核通过
-            seller_id=seller.id
-        )
-        db.session.add(product)
-        db.session.flush()
-        
-        # 关联品类
-        if data["category"] in categories:
-            pc = ProductCategory(product_id=product.id, category_id=categories[data["category"]].id)
-            db.session.add(pc)
-    
+    categories = {category.name: category for category in Category.query.all()}
+    added = 0
+    for name, description, price, condition, category_name in PRODUCTS:
+        product = Product.query.filter_by(name=name).first()
+        if not product:
+            product = Product(
+                name=name,
+                description=description,
+                price=price,
+                condition=condition,
+                status="approved",
+                seller_id=seller.id,
+            )
+            db.session.add(product)
+            db.session.flush()
+            added += 1
+        category = categories.get(category_name)
+        if category and not ProductCategory.query.filter_by(
+            product_id=product.id, category_id=category.id
+        ).first():
+            db.session.add(
+                ProductCategory(product_id=product.id, category_id=category.id)
+            )
     db.session.commit()
-    print(f"✅ 已初始化 {len(products_data)} 个商品")
+    print(f"Products seeded: {added} added, {Product.query.count()} total")
 
 
-def main():
-    with app.app_context():
-        print("🚀 开始初始化数据...")
-        
-        # 创建所有表
-        db.create_all()
-        print("✅ 数据库表已创建")
-        
-        # 初始化数据
-        init_categories()
-        init_rbac()
-        init_users()
-        init_products()
-        
-        print("\n🎉 数据初始化完成！")
-        print("测试账号：")
-        print("  普通用户: testuser / 123456")
-        print("  管理员: admin / admin123")
-        print("  Agent: agent / agent123")
-
-
-if __name__ == "__main__":
-    main()
+def seed_all():
+    if current_app.config.get("APP_ENV") == "production":
+        raise RuntimeError("Demo seed is disabled in production")
+    seed_rbac()
+    seed_categories()
+    seed_users()
+    seed_products()
+    print("Demo data seeded: testuser / admin / agent")

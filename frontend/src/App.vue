@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="app-container">
     <!-- 导航栏 -->
     <header class="app-header">
@@ -71,7 +71,7 @@
     <!-- 页脚 -->
     <footer class="app-footer">
       <div class="footer-content">
-        <p>© 2024 校园二手交易平台 | 数据库原理课程项目</p>
+        <p>© 2026 校园二手交易平台 | AI 智能推荐</p>
         <p class="footer-links">
           <a href="#">关于我们</a>
           <span>·</span>
@@ -106,19 +106,25 @@ const canGoBack = computed(() => {
   return window.history.length > 1;
 });
 
-const navItems = [
-  { path: '/', label: '首页', icon: '🏠' },
-  { path: '/search', label: '搜索', icon: '🔍' },
-  { path: '/publish', label: '发布', icon: '📦' },
-  { path: '/favorites', label: '收藏', icon: '❤️' },
-];
+const navItems = computed(() => {
+  const items = [
+    { path: '/', label: '首页', icon: '🏠' },
+    { path: '/search', label: '搜索', icon: '🔍' },
+    { path: '/publish', label: '发布', icon: '📦' },
+    { path: '/favorites', label: '收藏', icon: '❤️' },
+  ];
+  if (userStore.isAdmin) {
+    items.push({ path: '/admin', label: '管理后台', icon: '管' });
+  }
+  return items;
+});
 
 function goBack() {
   router.back();
 }
 
-function logout() {
-  userStore.logout();
+async function logout() {
+  await userStore.logout();
   router.push("/login");
 }
 </script>
@@ -532,7 +538,3 @@ body {
   }
 }
 </style>
-
-
-
-
