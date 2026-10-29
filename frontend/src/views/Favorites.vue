@@ -36,17 +36,16 @@ import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
 
 import ProductCard from "../components/ProductCard.vue";
-import { apiGetUserBehaviors, apiAddBehavior } from "../api/behavior";
+import { apiGetFavorites, apiToggleFavorite } from "../api/behavior";
 
 const router = useRouter();
 const items = ref([]);
 
 async function reload() {
   try {
-    const res = await apiGetUserBehaviors({ behavior_type: "favorite" });
-    if (res.data.code === 0) {
-      // 提取商品信息
-      items.value = res.data.data.items.map(b => b.product);
+    const res = await apiGetFavorites();
+    if (res.status >= 200 && res.status < 300) {
+      items.value = res.data.data || [];
     }
   } catch (error) {
     console.error("加载收藏失败:", error);
@@ -62,13 +61,7 @@ async function removeFavorite(productId) {
       type: 'warning'
     });
     
-    // TODO: 需要后端提供删除收藏的接口
-    // 暂时使用添加收藏接口，传 favorite: false
-    await apiAddBehavior({
-      product_id: productId,
-      behavior_type: "favorite",
-      value: 0  // 0表示取消收藏
-    });
+    await apiToggleFavorite(productId, false);
     
     ElMessage.success("已移除收藏");
     await reload();

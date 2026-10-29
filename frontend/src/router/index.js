@@ -9,17 +9,38 @@ import Favorites from "../views/Favorites.vue";
 import UserCenter from "../views/UserCenter.vue";
 import ProductPublish from "../views/ProductPublish.vue";
 import AdminPanel from "../views/AdminPanel.vue";
+import { useUserStore } from "../stores/user";
 
 const routes = [
   { path: "/", name: "Home", component: Home },
   { path: "/search", name: "Search", component: Search },
   { path: "/product/:id", name: "ProductDetail", component: ProductDetail, props: true },
-  { path: "/publish", name: "ProductPublish", component: ProductPublish, meta: { requiresAuth: true } },
-  { path: "/admin", name: "AdminPanel", component: AdminPanel, meta: { requiresAuth: true } },
+  {
+    path: "/publish",
+    name: "ProductPublish",
+    component: ProductPublish,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: "/admin",
+    name: "AdminPanel",
+    component: AdminPanel,
+    meta: { requiresAuth: true, requiresAdmin: true }
+  },
   { path: "/register", name: "Register", component: Register },
   { path: "/login", name: "Login", component: Login },
-  { path: "/favorites", name: "Favorites", component: Favorites, meta: { requiresAuth: true } },
-  { path: "/user-center", name: "UserCenter", component: UserCenter, meta: { requiresAuth: true } }
+  {
+    path: "/favorites",
+    name: "Favorites",
+    component: Favorites,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: "/user-center",
+    name: "UserCenter",
+    component: UserCenter,
+    meta: { requiresAuth: true }
+  }
 ];
 
 const router = createRouter({
@@ -27,16 +48,18 @@ const router = createRouter({
   routes
 });
 
-export default router;
-
-router.beforeEach((to) => {
-  if (to.meta?.requiresAuth) {
-    const token = localStorage.getItem("token");
-    if (!token) return { path: "/login" };
+router.beforeEach(async (to) => {
+  const userStore = useUserStore();
+  if (!userStore.initialized) {
+    await userStore.bootstrap();
+  }
+  if (to.meta?.requiresAuth && !userStore.token) {
+    return { path: "/login", query: { redirect: to.fullPath } };
+  }
+  if (to.meta?.requiresAdmin && !userStore.isAdmin) {
+    return { path: "/" };
   }
   return true;
 });
 
-
-
-
+export default router;

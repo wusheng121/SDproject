@@ -144,7 +144,7 @@ async function loadCategories() {
   try {
     const res = await apiListCategories();
     if (res.data.code === 0) {
-      allCategories.value = res.data.data.items.map(c => c.name);
+      allCategories.value = res.data.data.items || [];
     }
   } catch (error) {
     console.error("加载品类失败:", error);

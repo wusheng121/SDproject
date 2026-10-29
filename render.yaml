@@ -1,14 +1,32 @@
 services:
   - type: web
-    name: movie-recommendation-backend
-    runtime: python
-    rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app
+    name: campus-market-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health/ready
     envVars:
+      - key: APP_ENV
+        value: production
       - key: SECRET_KEY
         generateValue: true
-      - key: JWT_EXPIRE_SECONDS
-        value: "86400"
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
       - key: CORS_ORIGINS
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: PHONE_ENC_KEY
+        sync: false
+      - key: PHONE_HASH_KEY
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
         sync: false

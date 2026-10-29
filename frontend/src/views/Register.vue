@@ -1,16 +1,16 @@
-<template>
+﻿<template>
   <div class="auth-page">
     <div class="auth-container">
       <!-- 左侧装饰区 -->
       <div class="auth-decoration">
         <div class="decoration-content">
-          <div class="decoration-icon">🎬</div>
-          <h2 class="decoration-title">加入 CineMatch</h2>
-          <p class="decoration-text">开启你的智能观影之旅</p>
+          <div class="decoration-icon">二手</div>
+          <h2 class="decoration-title">加入校园二手</h2>
+          <p class="decoration-text">开启你的智能交易之旅</p>
           <div class="decoration-features">
             <div class="feature-item">
               <span class="feature-icon">✨</span>
-              <span>AI智能推荐</span>
+              <span>AI 智能推荐</span>
             </div>
             <div class="feature-item">
               <span class="feature-icon">🎯</span>
@@ -18,7 +18,7 @@
             </div>
             <div class="feature-item">
               <span class="feature-icon">💎</span>
-              <span>海量精选影片</span>
+              <span>校园精选好物</span>
             </div>
           </div>
         </div>
@@ -34,7 +34,7 @@
         <div class="auth-form">
           <div class="form-header">
             <h1 class="form-title">创建账户</h1>
-            <p class="form-subtitle">填写信息，开始你的电影探索之旅</p>
+            <p class="form-subtitle">填写信息，开始你的校园交易之旅</p>
           </div>
 
           <form @submit.prevent="onSubmit" class="register-form">
@@ -63,6 +63,19 @@
                 class="form-input"
                 placeholder="your@email.com"
                 required
+              />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span class="label-icon">📱</span>
+                <span>手机号（可选）</span>
+              </label>
+              <input
+                v-model="form.phone"
+                type="tel"
+                class="form-input"
+                placeholder="用于交易联系，接口返回会自动脱敏"
               />
             </div>
 
@@ -123,6 +136,7 @@ const showPassword = ref(false);
 const form = reactive({
   username: "",
   email: "",
+  phone: "",
   password: ""
 });
 
@@ -132,22 +146,24 @@ async function onSubmit() {
     ElMessage.warning("用户名至少3个字符");
     return;
   }
-  if (form.password.length < 6) {
-    ElMessage.warning("密码至少6个字符");
+  if (form.password.length < 8 || !/[A-Za-z]/.test(form.password) || !/\d/.test(form.password)) {
+    ElMessage.warning("密码至少 8 位，且必须包含字母和数字");
     return;
   }
 
   loading.value = true;
   try {
     const resp = await apiRegister(form);
-    if (resp?.code === 0) {
-      ElMessage.success("🎉 注册成功，请登录");
+    if (resp?.status === 201) {
+      ElMessage.success("注册成功，请登录");
       setTimeout(() => {
         router.push("/login");
       }, 1000);
     } else {
-      ElMessage.error(resp?.message || "注册失败");
+      ElMessage.error(resp?.data?.message || "注册失败");
     }
+  } catch (error) {
+    ElMessage.error(error?.message || "注册失败");
   } finally {
     loading.value = false;
   }
@@ -496,25 +512,3 @@ async function onSubmit() {
   }
 }
 </style>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
