@@ -2,7 +2,7 @@
   <div class="assistant-page">
     <div class="page-header">
       <h2 class="page-title">购物助手</h2>
-      <p class="page-subtitle">没有大模型 API 也能连续对话。它只查询商品，不能删除、改价或支付。</p>
+      <p class="page-subtitle">配了 DeepSeek 密钥后，由模型组织回答；商品仍从数据库查出。它不能删除、改价或支付。</p>
     </div>
 
     <el-card class="chat-card">
@@ -16,12 +16,17 @@
       <div class="messages">
         <div v-if="messages.length === 0" class="hint">先说「平板」，再说「只要九成新」，然后说「便宜一点」。</div>
         <div v-for="(item, index) in messages" :key="index" :class="['bubble', item.role]">
-          <p>{{ item.content }}</p>
-          <div v-if="item.items?.length" class="products-grid">
-            <div v-for="product in item.items" :key="product.id" class="product-item">
-              <ProductCard :product="product" @open="openProduct" />
-            </div>
-          </div>
+          <p v-if="item.engine" class="engine">{{ item.engine === "deepseek" ? "DeepSeek" : "规则查询" }}</p>
+          <p class="reply-text">{{ item.content }}</p>
+          <button
+            v-for="product in item.items || []"
+            :key="product.id"
+            class="product-line"
+            type="button"
+            @click="openProduct(product)"
+          >
+            {{ product.name }} · {{ product.condition }} · ¥{{ product.price }}
+          </button>
         </div>
       </div>
 
@@ -44,7 +49,6 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 
-import ProductCard from "../components/ProductCard.vue";
 import { apiAssistantChat } from "../api/assistant";
 
 const router = useRouter();
@@ -81,6 +85,7 @@ async function sendText(text) {
     messages.value.push({
       role: "assistant",
       content: data.reply,
+      engine: data.engine,
       items: data.items || []
     });
     draft.value = "";
@@ -139,9 +144,29 @@ async function sendText(text) {
   border-radius: 12px;
 }
 
-.bubble p {
+.engine {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.reply-text {
   margin: 0;
   white-space: pre-wrap;
+  line-height: 1.7;
+}
+
+.product-line {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 10px;
+  text-align: left;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
 }
 
 .bubble.user {

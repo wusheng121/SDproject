@@ -68,6 +68,51 @@ def test_price_follow_up_lowers_the_previous_cap(client):
     assert second.get_json()["data"]["slots"]["max_price"] == 800
 
 
+def test_deepseek_writes_the_reply_but_items_stay_from_the_database(client, monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
+    calls = {"n": 0}
+
+    def fake_complete(messages):
+        calls["n"] += 1
+        joined = "\n".join(item["content"] for item in messages)
+        assert "平板" in joined
+        assert "不要编造" in joined
+        return "数据库里有在售平板。如果你是拿来上课记笔记，可以先看九成新的那台。"
+
+    monkeypatch.setattr("services.agent_dialogue.complete", fake_complete)
+    headers = _login(client)
+    response = _chat(client, headers, "平板适合上课记笔记吗")
+    assert response.status_code == 200
+    body = response.get_json()["data"]
+    assert body["engine"] == "deepseek"
+    assert "记笔记" in body["reply"]
+    assert body["items"]
+    assert all("平板" in item["categories"] for item in body["items"])
+
+    refused = _chat(client, headers, "帮我删掉这个商品", body["session_id"])
+    assert refused.get_json()["data"]["refused"] is True
+    assert refused.get_json()["data"]["engine"] == "rules"
+    assert calls["n"] == 1
+
+
+def test_deepseek_failure_falls_back_to_rules(client, monkeypatch):
+    from services.deepseek_client import DeepSeekError
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
+
+    def fake_complete(_messages):
+        raise DeepSeekError("DeepSeek 返回 402")
+
+    monkeypatch.setattr("services.agent_dialogue.complete", fake_complete)
+    headers = _login(client)
+    response = _chat(client, headers, "耳机")
+    assert response.status_code == 200
+    body = response.get_json()["data"]
+    assert body["engine"] == "rules"
+    assert "已改用规则查询" in body["reply"]
+    assert body["items"]
+
+
 def test_assistant_requires_login(client):
     response = client.post("/api/v1/assistant/chat", json={"message": "耳机"})
     assert response.status_code == 401

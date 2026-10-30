@@ -43,7 +43,12 @@ def chat(user):
         "agent.dialogue.refuse" if result["refused"] else "agent.dialogue.query",
         "agent_dialogue",
         resource_id=result["session_id"],
-        after={"skill": result["skill"], "slots": result["slots"], "count": len(result["items"])},
+        after={
+            "skill": result["skill"],
+            "engine": result["engine"],
+            "slots": result["slots"],
+            "count": len(result["items"]),
+        },
     )
     db.session.commit()
     return api_ok(result)

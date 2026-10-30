@@ -6,6 +6,7 @@ import pytest
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
+os.environ["DEEPSEEK_API_KEY"] = ""
 os.environ.setdefault("APP_ENV", "testing")
 os.environ.setdefault("SECRET_KEY", "test-secret-0123456789abcdef0123456789")
 os.environ.setdefault("TEST_DATABASE_URL", "sqlite:///:memory:")

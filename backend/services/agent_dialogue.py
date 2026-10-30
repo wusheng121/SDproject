@@ -1,11 +1,15 @@
-"""不调用大模型的只读对话。多轮条件记在会话里，追问只改上一轮的筛选。"""
+"""只读购物对话。多轮条件记在会话里；配置了 DeepSeek 密钥时由模型组织回答，商品仍从数据库查出。"""
 
 import json
+import logging
 import re
 import secrets
 
 from models import AgentDialogue, Category, Product, ProductCategory
+from services.deepseek_client import DeepSeekError, api_key, complete
 from utils.serializers import product_public
+
+logger = logging.getLogger(__name__)
 
 WRITE_WORDS = (
     "删除",
@@ -161,23 +165,79 @@ def _recommend(slots: dict) -> list[Product]:
     )
 
 
+def _conditions(slots: dict) -> str:
+    parts = []
+    if slots.get("category"):
+        parts.append(f"品类是{slots['category']}")
+    if slots.get("condition"):
+        parts.append(f"成色是{slots['condition']}")
+    if slots.get("max_price") is not None:
+        parts.append(f"价格不超过 {slots['max_price']} 元")
+    if slots.get("min_price") is not None:
+        parts.append(f"价格不低于 {slots['min_price']} 元")
+    return "，".join(parts)
+
+
 def _reply(skill: str, slots: dict, items: list, recognition: dict | None) -> str:
     if skill == "refuse":
-        return "这个操作我不能做。我只能查询商品和推荐，不能删除、改价、下单或支付。请到对应页面自己操作。"
-    prefix = ""
-    if recognition:
-        prefix = (
-            f"这张图看起来是{recognition['brand']}的{recognition['condition']}{recognition['category']}。"
+        return (
+            "这个操作我不能做。我只能帮你查商品、按上一轮条件继续筛选，"
+            "不能删除、改价、下单或支付。商品还在，你可以换个说法，比如「只要九成新」或「便宜一点」。"
         )
-    if skill == "recommend":
-        prefix += "按你的追问，我用只读推荐查了一下。"
-    elif slots.get("max_price") is not None and slots.get("sort") == "price":
-        prefix += f"已把价格上限调到 {slots['max_price']} 元。"
-    elif slots.get("condition") and slots.get("category"):
-        prefix += f"继续按{slots['category']}、{slots['condition']}筛选。"
+    lines = []
+    if recognition:
+        lines.append(
+            f"我看到文件名里有「{recognition['category']}」，先按这个品类来找，没有调用识图模型。"
+        )
+    heard = _conditions(slots)
+    if skill == "recommend" and not heard:
+        lines.append("你想看推荐。我按最新上架查了在售商品，没有改任何数据。")
+    elif heard:
+        lines.append(f"我记住的条件是：{heard}。")
     if not items:
-        return prefix + "没有找到符合条件的在售商品。可以换个品类，或把价格放宽一点。"
-    return prefix + f"已为您找到如下 {len(items)} 件商品："
+        lines.append("按这些条件没有找到在售商品。可以说「便宜一点」以外的品类，或把价格放宽。")
+        return "\n".join(lines)
+    lines.append(f"已为您找到如下 {len(items)} 件商品：")
+    for index, item in enumerate(items, start=1):
+        lines.append(f"{index}. {item.name}，{item.condition}，{item.price:g} 元")
+    lines.append("可以继续追问，例如「只要九成新」或「便宜一点」。")
+    return "\n".join(lines)
+
+
+def _catalog(items: list) -> str:
+    if not items:
+        return "当前条件下没有在售商品。"
+    lines = []
+    for index, item in enumerate(items, start=1):
+        lines.append(f"{index}. {item.name}，{item.condition}，{item.price:g} 元")
+    return "\n".join(lines)
+
+
+def _model_messages(text: str, slots: dict, items: list, recognition: dict | None, history: list) -> list[dict]:
+    heard = _conditions(slots) or "还没有筛选条件"
+    seen = ""
+    if recognition:
+        seen = (
+            f"用户上传的文件名被 Mock 识别为{recognition['category']}，"
+            "没有读取图片像素。\n"
+        )
+    system = (
+        "你是校园二手市场的购物助手。下面的商品来自数据库，只能推荐这些，"
+        "不要编造列表之外的名称、价格或库存。你可以回答商品是否适合某个用途，"
+        "但要说明依据是列表里的哪一件。你不能删除、改价、下单、支付或封禁，"
+        "也不要声称已经做了这些操作。用简短中文回答。\n"
+        f"当前记住的条件：{heard}。\n"
+        f"{seen}"
+        f"在售商品：\n{_catalog(items)}"
+    )
+    messages = [{"role": "system", "content": system}]
+    for item in history[-8:]:
+        role = item.get("role")
+        content = (item.get("content") or "").strip()
+        if role in {"user", "assistant"} and content:
+            messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": text})
+    return messages
 
 
 def converse(user, message: str | None, session_id: str | None = None, filename: str | None = None) -> dict:
@@ -201,18 +261,27 @@ def converse(user, message: str | None, session_id: str | None = None, filename:
     elif skill == "recommend":
         items = _recommend(slots)
     reply = _reply(skill, slots, items, recognition)
+    engine = "rules"
+    history = _messages(row)
+    if skill != "refuse" and api_key():
+        try:
+            reply = complete(_model_messages(text, slots, items, recognition, history))
+            engine = "deepseek"
+        except DeepSeekError as exc:
+            logger.warning("DeepSeek 调用失败，改用规则回复：%s", exc)
+            reply = f"模型暂时没连上，已改用规则查询。\n{reply}"
     if skill != "refuse":
         slots["last_prices"] = [float(item.price) for item in items]
         slots.pop("sort", None)
-    history = _messages(row)
     history.append({"role": "user", "content": text, "filename": filename or None})
-    history.append({"role": "assistant", "content": reply, "skill": skill})
+    history.append({"role": "assistant", "content": reply, "skill": skill, "engine": engine})
     row.slots_json = json.dumps(slots, ensure_ascii=False)
     row.messages_json = json.dumps(history[-20:], ensure_ascii=False)
     return {
         "row": row,
         "session_id": row.id,
         "reply": reply,
+        "engine": engine,
         "skill": skill,
         "refused": skill == "refuse",
         "recognition": recognition,
