@@ -1,50 +1,40 @@
-/* 主题变量定义 */
+/* 校园集市主题变量 */
 :root {
-  /* 日间模式 - 浅色主题（更淡的紫色） */
-  --primary-color: #a8b5ff;
-  --primary-dark: #b8a5e8;
-  --primary-gradient: linear-gradient(135deg, #a8b5ff 0%, #b8a5e8 100%);
-  
-  --bg-primary: linear-gradient(135deg, #e8ecff 0%, #f0ebff 100%);
-  --bg-secondary: rgba(255, 255, 255, 0.95);
-  --bg-card: white;
-  --bg-hover: rgba(168, 181, 255, 0.15);
-  
-  --text-primary: #2c3e50;
-  --text-secondary: #7f8c8d;
-  --text-light: #95a5a6;
-  --text-white: white;
-  
-  --border-color: #e0e0e0;
-  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.08);
-  --shadow-medium: 0 8px 30px rgba(0, 0, 0, 0.12);
-  --shadow-strong: 0 20px 60px rgba(0, 0, 0, 0.15);
-  
-  --overlay-bg: rgba(168, 181, 255, 0.95);
+  --primary-color: #47785f;
+  --primary-dark: #355d49;
+  --primary-gradient: linear-gradient(135deg, #47785f 0%, #355d49 100%);
+  --bg-primary: #f5f6f3;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #edf3ee;
+  --text-primary: #24332b;
+  --text-secondary: #748078;
+  --text-light: #98a19a;
+  --text-white: #ffffff;
+  --border-color: #e2e7e2;
+  --shadow-soft: 0 2px 10px rgba(33, 49, 39, 0.06);
+  --shadow-medium: 0 6px 18px rgba(33, 49, 39, 0.1);
+  --shadow-strong: 0 14px 36px rgba(33, 49, 39, 0.14);
+  --overlay-bg: rgba(53, 93, 73, 0.94);
 }
 
-/* 夜间模式 - 深色主题 */
 [data-theme="dark"] {
-  --primary-color: #5865f2;
-  --primary-dark: #4752c4;
-  --primary-gradient: linear-gradient(135deg, #5865f2 0%, #4752c4 100%);
-  
-  --bg-primary: linear-gradient(135deg, #1a1d2e 0%, #16213e 100%);
-  --bg-secondary: rgba(30, 33, 48, 0.95);
-  --bg-card: #1e2139;
-  --bg-hover: rgba(88, 101, 242, 0.2);
-  
-  --text-primary: #e4e6eb;
-  --text-secondary: #b0b3b8;
-  --text-light: #8a8d91;
-  --text-white: white;
-  
-  --border-color: #2d3142;
-  --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.3);
-  --shadow-medium: 0 8px 30px rgba(0, 0, 0, 0.4);
-  --shadow-strong: 0 20px 60px rgba(0, 0, 0, 0.5);
-  
-  --overlay-bg: rgba(88, 101, 242, 0.95);
+  --primary-color: #91b7a0;
+  --primary-dark: #729b82;
+  --primary-gradient: linear-gradient(135deg, #47785f 0%, #355d49 100%);
+  --bg-primary: #171d19;
+  --bg-secondary: #202923;
+  --bg-card: #202923;
+  --bg-hover: #29362d;
+  --text-primary: #e3ebe5;
+  --text-secondary: #aab8ae;
+  --text-light: #829187;
+  --text-white: #ffffff;
+  --border-color: #344139;
+  --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.2);
+  --shadow-medium: 0 6px 18px rgba(0, 0, 0, 0.28);
+  --shadow-strong: 0 14px 36px rgba(0, 0, 0, 0.36);
+  --overlay-bg: rgba(53, 93, 73, 0.94);
 }
 
 /* 全局样式 - CineMatch 电影推荐系统 */

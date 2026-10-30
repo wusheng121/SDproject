@@ -1,217 +1,168 @@
 <template>
   <div class="search-page">
-    <div class="page-header">
-      <h2 class="page-title">搜索商品</h2>
-      <p class="page-subtitle">输入关键词，找到心仪的好物</p>
+    <div class="page-heading">
+      <div><p class="eyebrow">CAMPUS MARKETPLACE</p><h1>逛一逛</h1><p>按关键词、品类和预算，找到合适的校园好物。</p></div>
     </div>
 
-    <el-card class="search-card">
-      <el-form :inline="true" @submit.prevent>
-        <el-form-item label="商品名称">
-          <el-input 
-            v-model="form.keyword" 
-            placeholder="输入商品关键词" 
-            style="width: 240px" 
-            @keyup.enter="onSearch" 
-          />
-        </el-form-item>
-        <el-form-item label="品类">
-          <el-select
-            v-model="form.category"
-            clearable
-            filterable
-            placeholder="选择品类"
-            style="width: 180px"
-            @change="onSearch"
-          >
-            <el-option v-for="c in categories" :key="c" :label="c" :value="c" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="价格范围">
-          <el-input 
-            v-model="form.min_price" 
-            placeholder="最低价" 
-            style="width: 100px" 
-            type="number"
-            @keyup.enter="onSearch" 
-          />
-          <span style="margin: 0 8px;">-</span>
-          <el-input 
-            v-model="form.max_price" 
-            placeholder="最高价" 
-            style="width: 100px" 
-            type="number"
-            @keyup.enter="onSearch" 
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="primary" @click="onSearch">搜索</el-button>
-          <el-button @click="onReset">重置</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
-
-    <el-card class="results-card">
-      <div class="results-header">
-        <span>搜索结果</span>
-        <span v-if="total > 0" class="results-count">共 {{ total }} 件商品</span>
-      </div>
-      <el-empty v-if="results.length === 0" description="暂无结果，试试其他关键词" />
-      <div v-else class="products-grid">
-        <div v-for="p in results" :key="p.id" class="product-item">
-          <ProductCard :product="p" @open="openProduct" />
+    <section class="search-tools">
+      <el-form class="filter-form" @submit.prevent="onSearch">
+        <div class="search-input-row">
+          <el-input v-model="form.keyword" class="keyword-input" clearable placeholder="搜索商品名称" @keyup.enter="onSearch">
+            <template #append><el-button type="primary" @click="onSearch">搜索</el-button></template>
+          </el-input>
+          <input ref="imageInput" type="file" accept="image/*" hidden @change="recognizeForSearch" />
+          <el-button class="image-search-button" plain :loading="recognizing" @click="imageInput?.click()">拍照识物找同类</el-button>
         </div>
-      </div>
-    </el-card>
+        <p v-if="recognizedHint" class="assist-hint">{{ recognizedHint }}</p>
+        <div class="filter-row">
+          <el-select v-model="form.category" clearable filterable placeholder="全部品类" @change="onSearch">
+            <el-option v-for="category in categories" :key="category" :label="category" :value="category" />
+          </el-select>
+          <el-select v-model="form.min_condition" clearable placeholder="最低可接受成色" @change="onSearch">
+            <el-option v-for="condition in conditions" :key="condition.value" :label="condition.label" :value="condition.value" />
+          </el-select>
+          <div class="price-range"><el-input v-model="form.min_price" type="number" min="0" placeholder="最低价" @keyup.enter="onSearch" /><span>至</span><el-input v-model="form.max_price" type="number" min="0" placeholder="最高价" @keyup.enter="onSearch" /><span>元</span></div>
+          <el-select v-model="form.sort" placeholder="排序方式" @change="onSearch">
+            <el-option label="综合热门" value="hot" /><el-option label="最新发布" value="new" /><el-option label="价格从低到高" value="price_asc" /><el-option label="价格从高到低" value="price_desc" />
+          </el-select>
+          <el-button @click="onReset">重置筛选</el-button>
+        </div>
+      </el-form>
+    </section>
+
+    <section class="results-section">
+      <div class="results-heading"><div><h2>全部商品</h2><span>共 {{ total }} 件</span></div><span v-if="hasFilters" class="filter-note">已应用筛选条件</span></div>
+      <div v-if="loading" class="loading-state">正在查找商品...</div>
+      <div v-else-if="results.length" class="products-grid"><ProductCard v-for="product in results" :key="product.id" :product="product" @open="openProduct" /></div>
+      <el-empty v-else description="没有找到符合条件的商品" />
+      <div v-if="total > pageSize" class="pagination-row"><el-pagination v-model:current-page="page" :page-size="pageSize" :total="total" layout="prev, pager, next" @current-change="loadResults" /></div>
+    </section>
   </div>
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
-
 import ProductCard from "../components/ProductCard.vue";
-import { apiListProducts, apiListCategories } from "../api/products";
+import { apiListCategories, apiListProducts, apiRecognizeProduct, apiSearchProducts } from "../api/products";
 
 const router = useRouter();
+const route = useRoute();
 const results = ref([]);
 const categories = ref([]);
 const total = ref(0);
+const loading = ref(false);
+const page = ref(1);
+const pageSize = 20;
+const imageInput = ref(null);
+const recognizing = ref(false);
+const recognizedHint = ref("");
+const conditions = [
+  { label: "全新", value: "全新" },
+  { label: "九成新及以上", value: "九成新" },
+  { label: "八成新及以上", value: "八成新" },
+  { label: "七成新及以上", value: "七成新" }
+];
+const form = reactive({ keyword: "", category: "", min_condition: "", min_price: "", max_price: "", sort: "hot" });
+const hasFilters = computed(() => Object.values(form).some((value) => value && value !== "hot"));
 
-const form = reactive({
-  keyword: "",
-  category: "",
-  min_price: "",
-  max_price: ""
-});
+async function recognizeForSearch(event) {
+  const image = event.target.files?.[0];
+  event.target.value = "";
+  if (!image) return;
+  recognizing.value = true;
+  try {
+    const response = await apiRecognizeProduct(image);
+    const recognition = response.data.data.recognition;
+    form.category = categories.value.includes(recognition.category) ? recognition.category : "";
+    form.keyword = recognition.name && recognition.name !== "二手商品" ? recognition.name : recognition.keywords?.[0] || "";
+    recognizedHint.value = `识别到${recognition.category}，可编辑关键词或品类后搜索`;
+    onSearch();
+  } catch (error) {
+    ElMessage.error(error.message || "图片识别失败");
+  } finally {
+    recognizing.value = false;
+  }
+}
 
 async function loadCategories() {
   try {
-    const res = await apiListCategories();
-    if (res.data.code === 0) {
-      categories.value = res.data.data.items || [];
-    }
+    const response = await apiListCategories();
+    if (response.data.code === 0) categories.value = response.data.data.items || [];
   } catch (error) {
     console.error("加载品类失败:", error);
   }
 }
 
-async function onSearch() {
+async function loadResults() {
+  loading.value = true;
   try {
-    const params = {
-      page: 1,
-      page_size: 20
-    };
-    
-    if (form.keyword) params.q = form.keyword;
-    if (form.category) params.category = form.category;
-    if (form.min_price) params.min_price = parseFloat(form.min_price);
-    if (form.max_price) params.max_price = parseFloat(form.max_price);
-    
-    const res = await apiListProducts(params);
-    if (res.data.code === 0) {
-      results.value = res.data.data.items || [];
-      total.value = res.data.data.total || 0;
+    let response;
+    if (form.keyword.trim()) {
+      response = await apiSearchProducts({ q: form.keyword.trim(), category: form.category || undefined, min_condition: form.min_condition || undefined, min_price: form.min_price || undefined, max_price: form.max_price || undefined, sort: form.sort });
+      const items = response.data.code === 0 ? response.data.data.items || [] : [];
+      results.value = items.slice((page.value - 1) * pageSize, page.value * pageSize);
+      total.value = response.data.data.total || 0;
+    } else {
+      response = await apiListProducts({ page: page.value, page_size: pageSize, category: form.category || undefined, min_condition: form.min_condition || undefined, min_price: form.min_price || undefined, max_price: form.max_price || undefined, sort: form.sort });
+      if (response.data.code === 0) {
+        results.value = response.data.data.items || [];
+        total.value = response.data.data.total || 0;
+      }
     }
+    router.replace({ query: { ...route.query, ...(form.keyword ? { q: form.keyword } : {}), ...(form.category ? { category: form.category } : {}) } });
   } catch (error) {
     console.error("搜索失败:", error);
     ElMessage.error("搜索失败，请重试");
+  } finally {
+    loading.value = false;
   }
 }
 
+function onSearch() { page.value = 1; loadResults(); }
 function onReset() {
-  form.keyword = "";
-  form.category = "";
-  form.min_price = "";
-  form.max_price = "";
-  results.value = [];
-  total.value = 0;
+  Object.assign(form, { keyword: "", category: "", min_condition: "", min_price: "", max_price: "", sort: "hot" });
+  page.value = 1;
+  router.replace({ query: {} });
+  loadResults();
 }
+function openProduct(product) { router.push(`/product/${product.id}`); }
 
-function openProduct(product) {
-  router.push(`/product/${product.id}`);
-}
+watch(() => route.query, (query) => {
+  form.keyword = typeof query.q === "string" ? query.q : "";
+  form.category = typeof query.category === "string" ? query.category : "";
+}, { immediate: true });
 
 onMounted(() => {
   loadCategories();
+  loadResults();
 });
 </script>
 
 <style scoped>
-.search-page {
-  padding: 24px;
-  max-width: 1400px;
-  margin: 0 auto;
-}
-
-.page-header {
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 8px 0;
-}
-
-.page-subtitle {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin: 0;
-}
-
-.search-card {
-  margin-bottom: 24px;
-}
-
-.results-card {
-  min-height: 400px;
-}
-
-.results-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 20px;
-}
-
-.results-count {
-  font-size: 14px;
-  color: var(--text-secondary);
-  font-weight: 400;
-}
-
-.products-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 24px;
-  margin-top: 20px;
-}
-
-.product-item {
-  animation: fadeIn 0.4s ease;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (max-width: 768px) {
-  .products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 16px;
-  }
-}
+.search-page { padding: 36px 0 20px; }
+.page-heading { margin-bottom: 28px; }
+.eyebrow { margin: 0 0 8px; color: var(--primary-color); font-size: 11px; font-weight: 800; letter-spacing: 1px; }
+.page-heading h1 { margin: 0; color: var(--text-primary); font-size: 32px; }
+.page-heading p:last-child { margin: 8px 0 0; color: var(--text-secondary); font-size: 14px; }
+.search-tools { padding: 20px; border: 1px solid var(--border-color); background: var(--bg-card); }
+.search-input-row { display: flex; align-items: center; gap: 10px; }
+.keyword-input { flex: 1; min-width: 240px; max-width: 620px; }
+.image-search-button { flex: 0 0 auto; min-height: 40px; }
+.assist-hint { margin: 8px 0 0; color: var(--text-secondary); font-size: 12px; }
+.filter-row { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.filter-row > .el-select { width: 160px; }
+.price-range { display: flex; align-items: center; gap: 7px; color: var(--text-secondary); }
+.price-range .el-input { width: 110px; }
+.results-section { margin-top: 32px; }
+.results-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.results-heading > div { display: flex; align-items: baseline; gap: 12px; }
+.results-heading h2 { margin: 0; color: var(--text-primary); font-size: 21px; }
+.results-heading span, .filter-note { color: var(--text-secondary); font-size: 12px; }
+.products-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.loading-state, .pagination-row { padding: 28px 0; text-align: center; }
+.pagination-row { display: flex; justify-content: center; }
+@media (max-width: 850px) { .products-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .search-page { padding-top: 24px; } .search-tools { padding: 14px; } .search-input-row { align-items: stretch; flex-direction: column; } .keyword-input { min-width: 0; max-width: none; width: 100%; } .image-search-button { width: 100%; margin-left: 0 !important; } .filter-row { align-items: stretch; } .filter-row > .el-select { width: calc(50% - 5px); } .price-range { width: 100%; } .price-range .el-input { flex: 1; width: 0; } .products-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; } .results-heading { align-items: flex-start; } }
 </style>

@@ -1,9 +1,9 @@
-
 from flask import Blueprint, request
 
 from auth import login_required
 from extensions import db
 from models import Product, UserBehavior
+from services.behavior_service import record_behavior_event
 from utils.response import api_error, api_ok
 from utils.serializers import product_public
 
@@ -52,6 +52,10 @@ def record_behavior(user):
                 value=value,
             )
         )
+    
+    if behavior_type in {"view", "favorite", "add_cart"}:
+        record_behavior_event(user.id, product.id, behavior_type)
+    
     db.session.commit()
     return api_ok({"recorded": True}, status=201)
 
