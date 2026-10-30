@@ -71,6 +71,14 @@ def create_app(config_name: str | None = None):
         except Exception:
             logger.warning("sentry initialization failed", exc_info=True)
 
+    from services.cache_store import build_cache
+
+    app.extensions["catalog_cache"] = build_cache(
+        app.config.get("REDIS_URL") or "",
+        local_ttl=int(app.config.get("CACHE_LOCAL_TTL_SECONDS", 20)),
+        remote_ttl=int(app.config.get("CACHE_REDIS_TTL_SECONDS", 120)),
+        max_items=int(app.config.get("CACHE_LOCAL_MAX_ITEMS", 256)),
+    )
     register_blueprints(app)
     _register_request_hooks(app)
     _register_error_handlers(app)
@@ -93,6 +101,9 @@ def _register_request_hooks(app):
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Cache-Control"] = "no-store"
+        cache_source = getattr(g, "cache_source", None)
+        if cache_source:
+            response.headers["X-Cache"] = cache_source
         if request.is_secure:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         logger.info(
@@ -132,6 +143,8 @@ def _register_health(app):
             checks["database"] = True
         except Exception:
             logger.exception("database readiness check failed")
+        cache = app.extensions.get("catalog_cache")
+        checks["cache"] = "redis" if cache is not None and cache.remote is not None else "local"
         redis_url = app.config.get("REDIS_URL")
         if redis_url:
             try:

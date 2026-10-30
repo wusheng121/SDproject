@@ -17,6 +17,7 @@ from models import (
     UserRole,
 )
 from services.behavior_service import recent_behavior_rows, serialize_behavior_event
+from services.cache_store import invalidate_product
 from utils.audit import log_operation
 from utils.response import api_error, api_ok
 from utils.serializers import (
@@ -205,7 +206,9 @@ def _change_product_status(admin, product_id, action, new_status, reason=None):
         before=before,
         after={"status": new_status, "reason": reason},
     )
+    category_names = [link.category.name for link in product.categories if link.category]
     db.session.commit()
+    invalidate_product(product.id, category_names)
     return api_ok({"product": product_public(product, include_description=True)})
 
 

@@ -16,7 +16,7 @@ AI 拍照识物与智能推荐的校园二手交易平台，采用 Vue 3 + Flask
 - Node.js 18+ 或 20+
 - MySQL 8.0+
 - Redis 7+
-- Docker Desktop（可选，推荐用于本地基础服务）
+- Docker Desktop。用它启动同样的 MySQL 和 Redis，分布式缓存连的就是这个 Redis。没启动时程序仍能跑，只使用本进程里的本地缓存。
 
 Windows PowerShell 如果提示 `npm.ps1 cannot be loaded`，统一使用 `npm.cmd` 代替 `npm`。
 
@@ -25,7 +25,7 @@ Windows PowerShell 如果提示 `npm.ps1 cannot be loaded`，统一使用 `npm.c
 后端配置位于 `backend/.env`，可从 `backend/.env.example` 复制：
 
 ```powershell
-cd D:\aWusheng\SDproject\backend
+cd backend
 Copy-Item .env.example .env
 ```
 
@@ -36,8 +36,10 @@ Copy-Item .env.example .env
 | `APP_ENV` | 运行环境 | `development` / `testing` / `production` |
 | `SECRET_KEY` | JWT/会话签名密钥，生产必须至少 32 字节 | 随机 hex 字符串 |
 | `DATABASE_URL` | MySQL 连接串 | `mysql+pymysql://campus:campus@127.0.0.1:3307/campus_market?charset=utf8mb4` |
-| `REDIS_URL` | Redis 连接串 | `redis://127.0.0.1:6379/0` |
+| `REDIS_URL` | Redis 连接串。宿主机用 `127.0.0.1:6379`，Docker 容器内用 `redis://redis:6379/0` | `redis://127.0.0.1:6379/0` |
 | `RATELIMIT_STORAGE_URI` | 限流存储 | `redis://127.0.0.1:6379/1` |
+| `CACHE_LOCAL_TTL_SECONDS` | 本进程缓存过期秒数 | `20` |
+| `CACHE_REDIS_TTL_SECONDS` | Redis 缓存过期秒数 | `120` |
 | `CORS_ORIGINS` | 允许的前端源，逗号分隔 | `http://localhost:5173,http://127.0.0.1:5173` |
 | `FRONTEND_URL` | 邮件链接使用的前端地址 | `http://localhost:5173` |
 | `JWT_ACCESS_TTL_SECONDS` | Access Token 有效期 | `900` |
@@ -65,7 +67,7 @@ python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().d
 前端配置位于 `frontend/.env`，可从 `frontend/.env.example` 复制：
 
 ```powershell
-cd D:\aWusheng\SDproject\frontend
+cd frontend
 Copy-Item .env.example .env
 ```
 
@@ -82,7 +84,7 @@ Copy-Item .env.example .env
 确保 Docker Desktop 已启动，且 `docker version` 能正常返回：
 
 ```powershell
-cd D:\aWusheng\SDproject
+# 在克隆下来的仓库根目录执行
 docker compose up --build
 ```
 
@@ -112,14 +114,14 @@ docker compose down -v   # 同时删除 MySQL 数据卷，谨慎使用
 1. 启动基础服务：
 
 ```powershell
-cd D:\aWusheng\SDproject
+# 在克隆下来的仓库根目录执行
 docker compose up -d mysql redis mailhog
 ```
 
 2. 启动后端：
 
 ```powershell
-cd D:\aWusheng\SDproject\backend
+cd backend
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt -r requirements-dev.txt
@@ -134,7 +136,7 @@ flask --app app run --debug --port 5000
 3. 启动前端：
 
 ```powershell
-cd D:\aWusheng\SDproject\frontend
+cd frontend
 npm.cmd install
 npm.cmd run dev
 ```
@@ -165,7 +167,7 @@ FLUSH PRIVILEGES;
 表结构通过 Alembic 管理，不要手动改生产表。
 
 ```powershell
-cd D:\aWusheng\SDproject\backend
+cd backend
 flask --app app db upgrade
 ```
 
@@ -232,7 +234,7 @@ WHERE username = 'testuser';
 后端静态检查与单元/集成测试：
 
 ```powershell
-cd D:\aWusheng\SDproject\backend
+cd backend
 ruff check app.py auth.py config.py extensions.py models.py routes utils seed tests
 pytest -q
 ```
@@ -248,7 +250,7 @@ python -m pytest -q
 前端生产构建：
 
 ```powershell
-cd D:\aWusheng\SDproject\frontend
+cd frontend
 npm.cmd run build
 ```
 

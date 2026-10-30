@@ -43,11 +43,13 @@ services:
       SECRET_KEY: dev-compose-secret-0123456789abcdef
       DATABASE_URL: mysql+pymysql://campus:campus@mysql:3306/campus_market?charset=utf8mb4
       REDIS_URL: redis://redis:6379/0
+      RATELIMIT_STORAGE_URI: redis://redis:6379/1
+      CACHE_LOCAL_TTL_SECONDS: "20"
+      CACHE_REDIS_TTL_SECONDS: "120"
       CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
       FRONTEND_URL: http://localhost:5173
       SMTP_HOST: mailhog
       SMTP_PORT: "1025"
-      RATELIMIT_STORAGE_URI: redis://redis:6379/1
     ports:
       - "5000:5000"
     depends_on:

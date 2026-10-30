@@ -4,6 +4,7 @@ from sqlalchemy import and_
 
 from extensions import db
 from models import Cart, Order, OrderItem, Product, Review, User, UserBehavior
+from services.cache_store import invalidate_product
 
 
 class TradeError(Exception):
@@ -231,11 +232,15 @@ def pay_order(user: User, order_id: int) -> dict:
             _fail("TRADE_UNAVAILABLE", "有商品已售出或已下架，请取消订单", 409)
         products.append(product)
     order.status = "paid"
+    category_names = []
     for product in products:
         product.status = "sold"
+        category_names.extend(link.category.name for link in product.categories if link.category)
         Cart.query.filter_by(product_id=product.id).delete(synchronize_session=False)
         _record_once(user.id, product.id, "order", value=1)
     db.session.commit()
+    for product in products:
+        invalidate_product(product.id, category_names)
     return _order_public(order)
 
 

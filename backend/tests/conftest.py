@@ -40,6 +40,7 @@ def reset_data(app):
         seed_categories()
         seed_users()
         seed_products()
+        app.extensions["catalog_cache"].clear()
     yield
     with app.app_context():
         db.session.remove()
