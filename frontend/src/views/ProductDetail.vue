@@ -57,7 +57,15 @@
           </div>
 
           <div class="action-buttons">
-            <el-button type="primary" size="large" @click="handleContact">
+            <el-button
+              type="primary"
+              size="large"
+              :disabled="!canAddToCart"
+              @click="addToCart"
+            >
+              {{ cartButtonText }}
+            </el-button>
+            <el-button type="primary" size="large" plain @click="handleContact">
               联系卖家
             </el-button>
             <el-button 
@@ -69,6 +77,20 @@
               <span v-else>❤️ 收藏</span>
             </el-button>
           </div>
+        </div>
+      </div>
+    </el-card>
+
+    <el-card v-if="product" class="similar-card">
+      <h2 class="section-title">商品评价</h2>
+      <el-empty v-if="reviews.length === 0" description="支付完成后，买家可以在订单里评价" />
+      <div v-else class="review-list">
+        <div v-for="review in reviews" :key="review.id" class="review-item">
+          <div class="review-head">
+            <span>{{ review.user?.username || "用户" }}</span>
+            <el-rate :model-value="review.score" disabled />
+          </div>
+          <p>{{ review.comment || "此用户没有填写评价内容" }}</p>
         </div>
       </div>
     </el-card>
@@ -88,13 +110,14 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 
 import ProductCard from "../components/ProductCard.vue";
 import { apiProductDetail, apiListProducts } from "../api/products";
 import { apiAddBehavior, apiToggleFavorite } from "../api/behavior";
+import { apiAddToCart, apiProductReviews } from "../api/trade";
 import { useUserStore } from "../stores/user";
 
 const route = useRoute();
@@ -103,8 +126,25 @@ const userStore = useUserStore();
 
 const product = ref(null);
 const similarProducts = ref([]);
+const reviews = ref([]);
 const loading = ref(false);
 const isFavorited = ref(false);
+
+const canAddToCart = computed(() => {
+  if (!product.value) return false;
+  const mine = userStore.profile?.id && product.value.seller?.id === userStore.profile.id;
+  return product.value.status === "approved" && !mine;
+});
+
+const cartButtonText = computed(() => {
+  if (!product.value) return "加入购物车";
+  if (userStore.profile?.id && product.value.seller?.id === userStore.profile.id) {
+    return "这是你发布的商品";
+  }
+  if (product.value.status === "sold") return "已售出";
+  if (product.value.status !== "approved") return "暂不可购买";
+  return "加入购物车";
+});
 
 async function loadProduct() {
   loading.value = true;
@@ -121,8 +161,8 @@ async function loadProduct() {
         recordView(id);
       }
       
-      // 加载相似商品
       loadSimilarProducts();
+      loadReviews(id);
     }
   } catch (error) {
     console.error("加载商品失败:", error);
@@ -162,6 +202,30 @@ async function loadSimilarProducts() {
     }
   } catch (error) {
     console.error("加载相似商品失败:", error);
+  }
+}
+
+async function loadReviews(productId) {
+  try {
+    const res = await apiProductReviews(productId);
+    reviews.value = res.data.data?.items || [];
+  } catch (error) {
+    console.error("加载评价失败:", error);
+    reviews.value = [];
+  }
+}
+
+async function addToCart() {
+  if (!userStore.token) {
+    ElMessage.warning("请先登录");
+    router.push("/login");
+    return;
+  }
+  try {
+    const res = await apiAddToCart(product.value.id);
+    ElMessage.success(res.data.data?.created ? "已加入购物车" : "购物车里已经有这件商品");
+  } catch (error) {
+    console.error("加入购物车失败:", error);
   }
 }
 
@@ -347,6 +411,32 @@ onMounted(() => {
 
 .action-buttons .el-button {
   flex: 1;
+}
+
+.review-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.review-item {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.review-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-primary);
+  font-weight: 650;
+}
+
+.review-item p {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
 }
 
 .similar-card {

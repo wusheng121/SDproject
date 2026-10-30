@@ -87,7 +87,11 @@ const navItems = computed(() => {
     { path: "/publish", label: "发布闲置" },
     { path: "/favorites", label: "我的收藏" }
   ];
-  if (userStore.token) items.push({ path: "/assistant", label: "购物助手" });
+  if (userStore.token) {
+    items.push({ path: "/cart", label: "购物车" });
+    items.push({ path: "/orders", label: "订单" });
+    items.push({ path: "/assistant", label: "购物助手" });
+  }
   if (userStore.isAdmin) items.push({ path: "/admin", label: "管理后台" });
   return items;
 });
