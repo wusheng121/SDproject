@@ -24,7 +24,14 @@ export function apiGetRecommendations(limit = 10) {
   return http.get("/recommendations", { params: { limit } });
 }
 
-export function apiAddReview(productId, score, comment) {
+export function apiAddReview(productId, score, comment, orderId) {
+  if (orderId) {
+    return http.post(`/v1/orders/${orderId}/reviews`, {
+      product_id: productId,
+      score,
+      comment
+    });
+  }
   return http.post("/behavior/review", {
     product_id: productId,
     score,

@@ -9,6 +9,8 @@ import Favorites from "../views/Favorites.vue";
 import UserCenter from "../views/UserCenter.vue";
 import ProductPublish from "../views/ProductPublish.vue";
 import AdminPanel from "../views/AdminPanel.vue";
+import Cart from "../views/Cart.vue";
+import Orders from "../views/Orders.vue";
 import { useUserStore } from "../stores/user";
 
 const routes = [
@@ -33,6 +35,18 @@ const routes = [
     path: "/favorites",
     name: "Favorites",
     component: Favorites,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: "/cart",
+    name: "Cart",
+    component: Cart,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: "/orders",
+    name: "Orders",
+    component: Orders,
     meta: { requiresAuth: true }
   },
   {

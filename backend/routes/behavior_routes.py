@@ -5,6 +5,12 @@ from flask import Blueprint, request
 from auth import login_required
 from extensions import db
 from models import Product, UserBehavior
+from services.trade_service import (
+    TradeError,
+    create_review,
+    find_reviewable_order_id,
+    list_my_reviews,
+)
 from utils.response import err, ok
 
 behavior_bp = Blueprint("behavior_bp", __name__, url_prefix="/api")
@@ -79,23 +85,39 @@ def list_favorites(user):
     return ok({"items": items, "total": len(items)})
 
 
-# TODO: 评价功能留给组员实现
 @behavior_bp.post("/behavior/review")
 @login_required
 def add_review(user):
     """
     POST /api/behavior/review
-    body: { product_id, score(1-5), comment }
-    添加商品评价（TODO: 待实现）
+    body: { product_id, score(1-5), comment, order_id? }
+    对已支付订单中的商品评价。未传 order_id 时，使用最近一笔可评价订单。
     """
-    return err("评价功能待实现", code=50001)
+    payload = request.get_json(silent=True) or {}
+    try:
+        product_id = int(payload.get("product_id"))
+        score = int(payload.get("score"))
+    except (TypeError, ValueError):
+        return err("product_id 和 score 不能为空", code=422, http_status=422)
+    try:
+        order_id = payload.get("order_id")
+        if order_id is None:
+            order_id = find_reviewable_order_id(user, product_id)
+        review = create_review(user, int(order_id), product_id, score, payload.get("comment"))
+    except TradeError as exc:
+        return err(exc.message, code=exc.status, http_status=exc.status)
+    return ok(review, "评价成功")
 
 
 @behavior_bp.get("/my-reviews")
 @login_required
-def list_my_reviews(user):
+def list_my_reviews_route(user):
     """
     GET /api/my-reviews
-    获取我的评价列表（TODO: 待实现）
+    获取我的评价列表
     """
-    return ok({"items": [], "message": "评价列表待实现"})
+    try:
+        items = list_my_reviews(user)
+    except TradeError as exc:
+        return err(exc.message, code=exc.status, http_status=exc.status)
+    return ok({"items": items, "total": len(items)})

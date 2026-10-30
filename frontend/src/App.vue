@@ -113,6 +113,10 @@ const navItems = computed(() => {
     { path: '/publish', label: '发布', icon: '📦' },
     { path: '/favorites', label: '收藏', icon: '❤️' },
   ];
+  if (userStore.token) {
+    items.push({ path: '/cart', label: '购物车', icon: '🛍️' });
+    items.push({ path: '/orders', label: '订单', icon: '📋' });
+  }
   if (userStore.isAdmin) {
     items.push({ path: '/admin', label: '管理后台', icon: '管' });
   }
