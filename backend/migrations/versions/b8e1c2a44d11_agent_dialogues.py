@@ -1,7 +1,7 @@
 """agent dialogues
 
 Revision ID: b8e1c2a44d11
-Revises: a37c46901747
+Revises: 01529365d1e0
 Create Date: 2026-10-30 22:15:00.000000
 
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 revision = "b8e1c2a44d11"
-down_revision = "a37c46901747"
+down_revision = "01529365d1e0"
 branch_labels = None
 depends_on = None
 

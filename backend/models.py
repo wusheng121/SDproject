@@ -197,6 +197,11 @@ class Product(db.Model, TimestampMixin):
     description = db.Column(db.Text, nullable=True)
     price = db.Column(db.Float, nullable=False, index=True)
     condition = db.Column("condition_level", db.String(20), nullable=False)
+    brand = db.Column(db.String(100), nullable=True)
+    has_notes = db.Column(db.Boolean, nullable=False, default=False)
+    defect_description = db.Column(db.String(500), nullable=True)
+    trade_method = db.Column(db.String(30), nullable=True)
+    trade_location = db.Column(db.String(200), nullable=True)
     image_url = db.Column(db.String(500), nullable=True)
     status = db.Column(db.String(20), default="pending", nullable=False, index=True)
     seller_id = db.Column(
@@ -267,6 +272,32 @@ class UserBehavior(db.Model, TimestampMixin):
         Index("ix_user_behaviors_user_type", "user_id", "behavior_type"),
         Index("ix_user_behaviors_product_type", "product_id", "behavior_type"),
     )
+
+
+class BehaviorEvent(db.Model):
+    __tablename__ = "behavior_events"
+
+    WEIGHTS = {"view": 1, "favorite": 3, "add_cart": 4}
+
+    id = db.Column(ID_TYPE, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    product_id = db.Column(db.ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    behavior_type = db.Column(db.String(20), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    product = db.relationship("Product")
+
+    __table_args__ = (Index("ix_behavior_events_user_time", "user_id", "created_at"),)
+
+    @classmethod
+    def recent(cls, now=None):
+        from datetime import timedelta
+
+        now = now or datetime.utcnow()
+        return cls.query.filter(
+            cls.created_at >= now - timedelta(days=7),
+            cls.created_at <= now,
+            cls.behavior_type.in_(cls.WEIGHTS),
+        )
 
 
 class Cart(db.Model):

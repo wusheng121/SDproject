@@ -10,6 +10,7 @@ import UserCenter from "../views/UserCenter.vue";
 import ProductPublish from "../views/ProductPublish.vue";
 import AdminPanel from "../views/AdminPanel.vue";
 import Assistant from "../views/Assistant.vue";
+import RecommendationTest from "../views/RecommendationTest.vue";
 import { useUserStore } from "../stores/user";
 
 const routes = [
@@ -40,6 +41,12 @@ const routes = [
     path: "/favorites",
     name: "Favorites",
     component: Favorites,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: "/recommendation-test",
+    name: "RecommendationTest",
+    component: RecommendationTest,
     meta: { requiresAuth: true }
   },
   {

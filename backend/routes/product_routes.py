@@ -1,11 +1,35 @@
 """商品相关路由 - 从 movie_routes.py 改造而来"""
 from flask import Blueprint, request
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from auth import current_user, login_required
 from extensions import db
 from models import Category, Product, ProductCategory, UserBehavior
 from utils.response import err, ok
+
+CONDITION_RANKS = {
+    "七成新": 70,
+    "八成新": 80,
+    "九成新": 90,
+    "九五新": 95,
+    "全新": 100,
+}
+
+
+def _condition_rank(value):
+    return CONDITION_RANKS.get(value, 0)
+
+
+def _condition_filter(query, minimum):
+    if minimum not in CONDITION_RANKS:
+        return query
+    return query.filter(
+        or_(*[
+            Product.condition == condition
+            for condition, rank in CONDITION_RANKS.items()
+            if rank >= CONDITION_RANKS[minimum]
+        ])
+    )
 
 product_bp = Blueprint("product_bp", __name__, url_prefix="/api")
 
@@ -20,6 +44,7 @@ def list_products():
     page_size = int(request.args.get("page_size", 12))
     category = request.args.get("category")
     condition = request.args.get("condition")
+    min_condition = request.args.get("min_condition")
     sort = request.args.get("sort", "hot")
     min_price = request.args.get("min_price")
     max_price = request.args.get("max_price")
@@ -46,6 +71,7 @@ def list_products():
     q = q.filter(Product.status == "approved")
 
     q_text = (request.args.get("q") or request.args.get("keyword") or "").strip()
+    min_condition = request.args.get("min_condition")
     if q_text:
         q = q.filter(Product.name.ilike(f"%{q_text}%"))
 
@@ -57,6 +83,8 @@ def list_products():
 
     if condition:
         q = q.filter(Product.condition == condition)
+    if min_condition:
+        q = _condition_filter(q, min_condition)
 
     if min_price:
         try:
@@ -107,6 +135,11 @@ def list_products():
                 "name": p.name,
                 "price": p.price,
                 "condition": p.condition,
+                "brand": p.brand,
+                "has_notes": p.has_notes,
+                "defect_description": p.defect_description,
+                "trade_method": p.trade_method,
+                "trade_location": p.trade_location,
                 "image_url": p.image_url,
                 "categories": category_map.get(p.id, []),
                 "behavior_count": int(behavior_count or 0),
@@ -122,6 +155,7 @@ def list_products():
             "filters": {
                 "category": category,
                 "condition": condition,
+                "min_condition": min_condition,
                 "sort": sort,
                 "min_price": min_price,
                 "max_price": max_price,
@@ -170,6 +204,11 @@ def product_detail(product_id: int):
             "description": p.description,
             "price": p.price,
             "condition": p.condition,
+            "brand": p.brand,
+            "has_notes": p.has_notes,
+            "defect_description": p.defect_description,
+            "trade_method": p.trade_method,
+            "trade_location": p.trade_location,
             "image_url": p.image_url,
             "status": p.status,
             "categories": [x[0] for x in categories],
@@ -188,13 +227,15 @@ def search_products():
     """
     q_text = (request.args.get("q") or "").strip()
     category = (request.args.get("category") or "").strip()
-    
+    min_condition = (request.args.get("min_condition") or "").strip()
+    min_price = request.args.get("min_price")
+    max_price = request.args.get("max_price")
+    sort = request.args.get("sort", "new")
     if not q_text and not category:
-        return ok({"items": []})
+        return ok({"items": [], "total": 0})
 
     q = db.session.query(Product).filter(Product.status == "approved")
 
-    # 商品名称模糊搜索
     if q_text:
         q = q.filter(Product.name.ilike(f"%{q_text}%"))
 
@@ -203,8 +244,31 @@ def search_products():
         q = q.join(ProductCategory, ProductCategory.product_id == Product.id).join(
             Category, Category.id == ProductCategory.category_id
         ).filter(Category.name.ilike(f"%{category}%"))
+    if min_condition:
+        q = _condition_filter(q, min_condition)
+    if min_price:
+        try:
+            q = q.filter(Product.price >= float(min_price))
+        except ValueError:
+            pass
+    if max_price:
+        try:
+            q = q.filter(Product.price <= float(max_price))
+        except ValueError:
+            pass
 
-    q = q.distinct().order_by(Product.created_at.desc()).limit(50)
+    total = q.distinct().count()
+    if sort == "price_asc":
+        q = q.order_by(Product.price.asc())
+    elif sort == "price_desc":
+        q = q.order_by(Product.price.desc())
+    elif sort == "hot":
+        q = q.outerjoin(UserBehavior, UserBehavior.product_id == Product.id).group_by(Product.id).order_by(
+            func.count(UserBehavior.id).desc(), Product.created_at.desc()
+        )
+    else:
+        q = q.order_by(Product.created_at.desc())
+    q = q.distinct().limit(50)
 
     items = [
         {
@@ -212,12 +276,16 @@ def search_products():
             "name": p.name,
             "price": p.price,
             "condition": p.condition,
+            "brand": p.brand,
+            "has_notes": p.has_notes,
+            "defect_description": p.defect_description,
+            "trade_method": p.trade_method,
+            "trade_location": p.trade_location,
             "image_url": p.image_url,
         }
         for p in q.all()
     ]
-    
-    return ok({"items": items})
+    return ok({"items": items, "total": total})
 
 
 @product_bp.get("/categories")
@@ -230,12 +298,90 @@ def list_categories():
     return ok({"items": names})
 
 
-# TODO: 商品发布、编辑、删除接口留给组员实现
+
+
+@product_bp.post("/ai/recognize")
+def recognize_product_image():
+    if not request.files.get("image"):
+        return err("请先选择一张商品图片", code=40001, http_status=400)
+    result = {
+        "name": "二手商品",
+        "brand": "",
+        "category": "数码产品",
+        "condition": "九成新",
+        "keywords": ["数码产品"],
+    }
+    return ok({"recognition": result, "mock": True})
+
+
+@product_bp.get("/products/price-reference")
+def price_reference():
+    category_name = (request.args.get("category") or "").strip()
+    condition = (request.args.get("condition") or "").strip()
+    if not category_name or condition not in CONDITION_RANKS:
+        return err("请选择品类和成色", code=40001, http_status=400)
+
+    query = Product.query.join(ProductCategory).join(Category).filter(
+        Product.status == "approved",
+        Category.name == category_name,
+    )
+    query = _condition_filter(query, condition)
+    prices = sorted(price for (price,) in query.with_entities(Product.price).all())
+    if not prices:
+        return ok({"category": category_name, "condition": condition, "sample_count": 0, "min_price": None, "median_price": None, "max_price": None})
+    middle = len(prices) // 2
+    median = prices[middle] if len(prices) % 2 else (prices[middle - 1] + prices[middle]) / 2
+    return ok({
+        "category": category_name,
+        "condition": condition,
+        "sample_count": len(prices),
+        "min_price": round(prices[0], 2),
+        "median_price": round(median, 2),
+        "max_price": round(prices[-1], 2),
+    })
+
+
+def _optional_text(data, key, max_length):
+    value = data.get(key)
+    if value is None:
+        return None
+    value = str(value).strip()
+    return value[:max_length] or None
+
+
 @product_bp.post("/products")
 @login_required
 def publish_product(user):
-    """
-    POST /api/products
-    发布商品（TODO: 待完善）
-    """
-    return err("商品发布功能待实现", code=50001)
+    data = request.get_json(silent=True) or {}
+    name = _optional_text(data, "name", 200)
+    condition = _optional_text(data, "condition", 20)
+    category_name = _optional_text(data, "category", 50)
+    try:
+        price = float(data.get("price"))
+    except (TypeError, ValueError):
+        price = 0
+    if not name or not category_name or condition not in CONDITION_RANKS or price <= 0:
+        return err("请填写商品名称、品类、有效价格和成色", code=40001, http_status=400)
+
+    category = Category.query.filter_by(name=category_name).first()
+    if not category:
+        return err("商品品类不存在", code=40001, http_status=400)
+
+    product = Product(
+        name=name,
+        description=_optional_text(data, "description", 4000),
+        price=price,
+        condition=condition,
+        brand=_optional_text(data, "brand", 100),
+        has_notes=bool(data.get("has_notes", False)),
+        defect_description=_optional_text(data, "defect_description", 500),
+        trade_method=_optional_text(data, "trade_method", 30),
+        trade_location=_optional_text(data, "trade_location", 200),
+        image_url=_optional_text(data, "image_url", 500),
+        status="pending",
+        seller_id=user.id,
+    )
+    product.categories.append(ProductCategory(category=category))
+    db.session.add(product)
+    db.session.commit()
+    return ok({"id": product.id, "status": product.status}, message="商品已提交审核")

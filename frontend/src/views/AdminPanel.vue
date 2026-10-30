@@ -56,12 +56,24 @@
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="250" fixed="right">
+            <el-table-column label="操作" width="280" fixed="right">
               <template #default="{ row }">
-                <el-button v-if="row.is_active" size="small" type="danger" plain @click="banUser(row)">封禁</el-button>
-                <el-button v-else size="small" type="success" plain @click="unbanUser(row)">解封</el-button>
-                <el-button size="small" @click="setAdmin(row, true)">设为管理员</el-button>
-                <el-button size="small" @click="setAdmin(row, false)">设为普通用户</el-button>
+                <div class="user-actions">
+                  <el-button size="small" type="primary" @click="viewUserDetail(row)">详情</el-button>
+                  <el-button v-if="row.is_active" size="small" type="danger" plain @click="banUser(row)">封禁</el-button>
+                  <el-button v-else size="small" type="success" plain @click="unbanUser(row)">解封</el-button>
+                  <el-dropdown trigger="click">
+                    <el-button size="small">
+                      更多<el-icon class="el-icon--right"><arrow-down /></el-icon>
+                    </el-button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item @click="setAdmin(row, true)">设为管理员</el-dropdown-item>
+                        <el-dropdown-item @click="setAdmin(row, false)">设为普通用户</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
               </template>
             </el-table-column>
           </el-table>
@@ -141,6 +153,7 @@
 <script setup>
 import { onMounted, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox } from "element-plus";
+import { ArrowDown } from "@element-plus/icons-vue";
 import { useRouter } from "vue-router";
 
 import {
@@ -149,6 +162,7 @@ import {
   apiGetLogs,
   apiGetProducts,
   apiGetStatistics,
+  apiGetUser,
   apiGetUsers,
   apiOfflineProduct,
   apiRejectProduct,
@@ -204,6 +218,37 @@ async function loadUsers(page = 1) {
     userTotal.value = res.data.pagination?.total || 0;
   } finally {
     loading.value = false;
+  }
+}
+
+async function viewUserDetail(row) {
+  try {
+    const res = await apiGetUser(row.id);
+    const user = res.data.data.user;
+    const behaviors = res.data.data.recent_behaviors || [];
+    const windowDays = res.data.data.behavior_window_days || 7;
+    
+    const content = `
+      <div style="text-align: left;">
+        <p><strong>用户名：</strong>${user.username}</p>
+        <p><strong>邮箱：</strong>${user.email || '-'}</p>
+        <p><strong>近${windowDays}天行为记录（${behaviors.length}条）：</strong></p>
+        ${behaviors.length ? `
+          <ul style="max-height: 300px; overflow-y: auto; padding-left: 20px;">
+            ${behaviors.map(b => `
+              <li style="margin: 8px 0;">
+                <strong>${b.behavior_label}</strong> - ${b.product_name || '商品已删除'}
+                <br><small style="color: #999;">${b.created_at} · 权重: ${b.weight}</small>
+              </li>
+            `).join('')}
+          </ul>
+        ` : '<p style="color: #999;">暂无行为记录</p>'}
+      </div>
+    `;
+    
+    await ElMessageBox.alert(content, '用户详情', { dangerouslyUseHTMLString: true, confirmButtonText: '关闭' });
+  } catch (error) {
+    ElMessage.error('加载用户详情失败');
   }
 }
 
@@ -345,6 +390,11 @@ onMounted(async () => {
 }
 .role-tag {
   margin: 2px 4px 2px 0;
+}
+.user-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 .pager {
   margin-top: 16px;
