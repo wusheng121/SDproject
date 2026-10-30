@@ -1,4 +1,5 @@
 from routes.admin_routes import admin_bp
+from routes.assistant_routes import assistant_bp
 from routes.agent_routes import agent_bp
 from routes.auth_routes import auth_bp
 from routes.behavior_routes import behavior_bp
@@ -13,6 +14,7 @@ def register_blueprints(app):
     app.register_blueprint(user_v1_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(agent_bp)
+    app.register_blueprint(assistant_bp)
     app.register_blueprint(product_bp)
     app.register_blueprint(behavior_bp)
     app.register_blueprint(behavior_v1_bp)

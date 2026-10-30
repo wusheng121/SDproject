@@ -309,6 +309,21 @@ class OrderItem(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
 
+class AgentDialogue(db.Model):
+    """用户与只读 Agent 的多轮会话。slots 保存追问时沿用的筛选条件。"""
+
+    __tablename__ = "agent_dialogues"
+
+    id = db.Column(db.String(64), primary_key=True)
+    user_id = db.Column(db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    slots_json = db.Column(db.Text, nullable=False, default="{}")
+    messages_json = db.Column(db.Text, nullable=False, default="[]")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+
 class Review(db.Model):
     __tablename__ = "reviews"
 
