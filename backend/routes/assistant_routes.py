@@ -32,6 +32,7 @@ def chat(user):
             payload.get("message"),
             payload.get("session_id"),
             payload.get("filename"),
+            payload.get("image_data_url"),
         )
     except ValueError as exc:
         return api_error("VALIDATION_ERROR", str(exc), 422)

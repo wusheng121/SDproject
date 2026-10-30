@@ -203,6 +203,8 @@ class Product(db.Model, TimestampMixin):
     trade_method = db.Column(db.String(30), nullable=True)
     trade_location = db.Column(db.String(200), nullable=True)
     image_url = db.Column(db.String(500), nullable=True)
+    ai_category = db.Column(db.String(50), nullable=True)
+    ai_condition = db.Column(db.String(20), nullable=True)
     status = db.Column(db.String(20), default="pending", nullable=False, index=True)
     seller_id = db.Column(
         db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True

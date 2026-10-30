@@ -1,8 +1,8 @@
 <template>
   <div class="assistant-page">
     <div class="page-header">
-      <h2 class="page-title">购物助手</h2>
-      <p class="page-subtitle">配了 DeepSeek 密钥后，由模型组织回答；商品仍从数据库查出。它不能删除、改价或支付。</p>
+      <h2 class="page-title">购物助手 · 识图寻商品</h2>
+      <p class="page-subtitle">上传照片是来找已经在售的商品。DeepSeek 看图后按品类查询，不会发布商品，也不能删除、改价或支付。</p>
     </div>
 
     <el-card class="chat-card">
@@ -16,6 +16,7 @@
       <div class="messages">
         <div v-if="messages.length === 0" class="hint">先说「平板」，再说「只要九成新」，然后说「便宜一点」。</div>
         <div v-for="(item, index) in messages" :key="index" :class="['bubble', item.role]">
+          <img v-if="item.image" :src="item.image" class="preview" alt="上传的商品照片" />
           <p v-if="item.engine" class="engine">{{ item.engine === "deepseek" ? "DeepSeek" : "规则查询" }}</p>
           <p class="reply-text">{{ item.content }}</p>
           <button
@@ -37,10 +38,12 @@
           @keyup.enter="sendText(draft)"
         />
         <input ref="fileInput" type="file" accept="image/*" hidden @change="onFile" />
-        <el-button @click="fileInput.click()">上传图片</el-button>
+        <el-button @click="fileInput.click()">识图寻商品</el-button>
         <el-button type="primary" :loading="sending" @click="sendText(draft)">发送</el-button>
       </div>
-      <p v-if="filename" class="file-name">将按文件名识物：{{ filename }}</p>
+      <p v-if="fileError" class="file-name">{{ fileError }}</p>
+      <p v-else-if="imageDataUrl" class="file-name">识图寻商品：将把这张照片发给 DeepSeek，按品类查找在售商品：{{ filename }}</p>
+      <img v-if="imageDataUrl" :src="imageDataUrl" class="preview" alt="待发送的商品照片" />
     </el-card>
   </div>
 </template>
@@ -57,8 +60,11 @@ const messages = ref([]);
 const draft = ref("");
 const sessionId = ref("");
 const filename = ref("");
+const imageDataUrl = ref("");
+const fileError = ref("");
 const sending = ref(false);
 const fileInput = ref(null);
+const maxImageBytes = 4 * 1024 * 1024;
 
 function openProduct(product) {
   router.push(`/product/${product.id}`);
@@ -66,19 +72,38 @@ function openProduct(product) {
 
 function onFile(event) {
   const file = event.target.files?.[0];
-  filename.value = file ? file.name : "";
+  filename.value = "";
+  imageDataUrl.value = "";
+  fileError.value = "";
+  if (!file) return;
+  if (file.size > maxImageBytes) {
+    fileError.value = "图片请小于 4MB";
+    event.target.value = "";
+    return;
+  }
+  filename.value = file.name;
+  const reader = new FileReader();
+  reader.onload = () => {
+    imageDataUrl.value = String(reader.result || "");
+  };
+  reader.readAsDataURL(file);
 }
 
 async function sendText(text) {
   const message = (text || "").trim();
-  if (!message && !filename.value) return;
+  if (!message && !imageDataUrl.value && !filename.value) return;
   sending.value = true;
-  messages.value.push({ role: "user", content: message || `上传图片 ${filename.value}` });
+  messages.value.push({
+    role: "user",
+    content: message || `上传图片 ${filename.value}`,
+    image: imageDataUrl.value
+  });
   try {
     const response = await apiAssistantChat({
       message,
       sessionId: sessionId.value,
-      filename: filename.value
+      filename: filename.value,
+      imageDataUrl: imageDataUrl.value
     });
     const data = response.data.data;
     sessionId.value = data.session_id;
@@ -90,6 +115,8 @@ async function sendText(text) {
     });
     draft.value = "";
     filename.value = "";
+    imageDataUrl.value = "";
+    fileError.value = "";
     if (fileInput.value) fileInput.value.value = "";
   } finally {
     sending.value = false;
@@ -142,6 +169,15 @@ async function sendText(text) {
   max-width: 100%;
   padding: 12px 14px;
   border-radius: 12px;
+}
+
+.preview {
+  display: block;
+  max-width: 180px;
+  max-height: 140px;
+  object-fit: contain;
+  margin: 8px 0;
+  border-radius: 8px;
 }
 
 .engine {

@@ -45,8 +45,10 @@ def _post(base: str, key: str, payload: dict) -> dict:
         },
         method="POST",
     )
+    # 空代理表示直连，不走本机 VPN。拉下代码的人同样直连 api.deepseek.com。
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
     try:
-        with urllib.request.urlopen(request, timeout=30) as response:
+        with opener.open(request, timeout=30) as response:
             return json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:240]

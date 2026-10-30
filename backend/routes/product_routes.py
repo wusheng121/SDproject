@@ -5,6 +5,8 @@ from sqlalchemy import func, or_
 from auth import current_user, login_required
 from extensions import db
 from models import Category, Product, ProductCategory, UserBehavior
+from services.listing_vision import ListingVisionError, recognize_listing
+from services.market_signals import price_reference as deal_price_reference
 from utils.response import err, ok
 
 CONDITION_RANKS = {
@@ -314,31 +316,28 @@ def recognize_product_image():
     return ok({"recognition": result, "mock": True})
 
 
+@product_bp.post("/ai/listing-recognize")
+@login_required
+def recognize_listing_image(user):
+    """识图发单。失败时不返回猜测结果，发布页保持空白。"""
+    image = request.files.get("image")
+    if image is None:
+        return err("请先选择一张商品图片", code=40001, http_status=400)
+    try:
+        result = recognize_listing(image.read(4 * 1024 * 1024 + 1), image.mimetype or "")
+    except ListingVisionError as exc:
+        return ok({"recognition": None, "message": str(exc)})
+    return ok({"recognition": result})
+
+
 @product_bp.get("/products/price-reference")
 def price_reference():
     category_name = (request.args.get("category") or "").strip()
-    condition = (request.args.get("condition") or "").strip()
-    if not category_name or condition not in CONDITION_RANKS:
-        return err("请选择品类和成色", code=40001, http_status=400)
-
-    query = Product.query.join(ProductCategory).join(Category).filter(
-        Product.status == "approved",
-        Category.name == category_name,
-    )
-    query = _condition_filter(query, condition)
-    prices = sorted(price for (price,) in query.with_entities(Product.price).all())
-    if not prices:
-        return ok({"category": category_name, "condition": condition, "sample_count": 0, "min_price": None, "median_price": None, "max_price": None})
-    middle = len(prices) // 2
-    median = prices[middle] if len(prices) % 2 else (prices[middle - 1] + prices[middle]) / 2
-    return ok({
-        "category": category_name,
-        "condition": condition,
-        "sample_count": len(prices),
-        "min_price": round(prices[0], 2),
-        "median_price": round(median, 2),
-        "max_price": round(prices[-1], 2),
-    })
+    if not category_name:
+        return err("请选择品类", code=40001, http_status=400)
+    if not Category.query.filter_by(name=category_name).first():
+        return err("商品品类不存在", code=40001, http_status=400)
+    return ok(deal_price_reference(category_name))
 
 
 def _optional_text(data, key, max_length):
@@ -367,6 +366,13 @@ def publish_product(user):
     if not category:
         return err("商品品类不存在", code=40001, http_status=400)
 
+    ai_category = _optional_text(data, "ai_category", 50)
+    ai_condition = _optional_text(data, "ai_condition", 20)
+    if ai_category and not Category.query.filter_by(name=ai_category).first():
+        ai_category = None
+    if ai_condition not in CONDITION_RANKS:
+        ai_condition = None
+
     product = Product(
         name=name,
         description=_optional_text(data, "description", 4000),
@@ -378,6 +384,8 @@ def publish_product(user):
         trade_method=_optional_text(data, "trade_method", 30),
         trade_location=_optional_text(data, "trade_location", 200),
         image_url=_optional_text(data, "image_url", 500),
+        ai_category=ai_category,
+        ai_condition=ai_condition,
         status="pending",
         seller_id=user.id,
     )

@@ -7,11 +7,16 @@ def _login(client):
     return {"Authorization": f"Bearer {response.get_json()['data']['access_token']}"}
 
 
-def _chat(client, headers, message, session_id=None, filename=None):
+def _chat(client, headers, message, session_id=None, filename=None, image_data_url=None):
     return client.post(
         "/api/v1/assistant/chat",
         headers=headers,
-        json={"message": message, "session_id": session_id, "filename": filename},
+        json={
+            "message": message,
+            "session_id": session_id,
+            "filename": filename,
+            "image_data_url": image_data_url,
+        },
     )
 
 
@@ -111,6 +116,139 @@ def test_deepseek_failure_falls_back_to_rules(client, monkeypatch):
     assert body["engine"] == "rules"
     assert "已改用规则查询" in body["reply"]
     assert body["items"]
+
+
+def test_uploaded_photo_is_read_by_the_model_without_forcing_condition(client, monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
+
+    def fake_photo(_data_url):
+        return {
+            "category": "耳机",
+            "brand": "索尼",
+            "condition": "九成新",
+            "description": "一副头戴耳机",
+            "source": "deepseek",
+        }
+
+    def fake_complete(messages):
+        joined = "\n".join(item["content"] for item in messages)
+        assert "头戴耳机" in joined
+        assert "不要因为猜测的成色" in joined
+        return "图片里是一副头戴耳机。数据库里有这些在售耳机。"
+
+    monkeypatch.setattr("services.agent_dialogue.recognize_photo", fake_photo)
+    monkeypatch.setattr("services.agent_dialogue.complete", fake_complete)
+    headers = _login(client)
+    response = _chat(
+        client,
+        headers,
+        "",
+        filename="photo.png",
+        image_data_url="data:image/png;base64,aaaa",
+    )
+    assert response.status_code == 200
+    body = response.get_json()["data"]
+    assert body["recognition"]["source"] == "deepseek"
+    assert body["recognition"]["category"] == "耳机"
+    assert body["slots"]["category"] == "耳机"
+    assert body["slots"]["condition"] is None
+    assert body["engine"] == "deepseek"
+    assert "头戴耳机" in body["reply"]
+    assert body["items"]
+    assert all("耳机" in item["categories"] for item in body["items"])
+
+
+def test_photo_recognition_failure_falls_back_to_filename(client, monkeypatch):
+    from services.deepseek_client import DeepSeekError
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
+
+    def fake_photo(_data_url):
+        raise DeepSeekError("识图失败")
+
+    monkeypatch.setattr("services.agent_dialogue.recognize_photo", fake_photo)
+    monkeypatch.setattr("services.agent_dialogue.complete", lambda _messages: "按文件名找到了耳机。")
+    headers = _login(client)
+    response = _chat(
+        client,
+        headers,
+        "",
+        filename="耳机.jpg",
+        image_data_url="data:image/jpeg;base64,bbbb",
+    )
+    assert response.status_code == 200
+    body = response.get_json()["data"]
+    assert body["recognition"]["source"] == "mock"
+    assert body["recognition"]["fallback"] is True
+    assert body["slots"]["category"] == "耳机"
+    assert all("耳机" in item["categories"] for item in body["items"])
+
+
+def test_photo_outside_catalog_does_not_reuse_previous_category(client, monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-test")
+
+    def fake_photo(_data_url):
+        return {
+            "category": None,
+            "seen": "汽车",
+            "brand": "福特",
+            "condition": "九成新",
+            "description": "一辆白色跑车",
+            "source": "deepseek",
+            "matched": False,
+        }
+
+    calls = {"n": 0}
+
+    def fake_complete(messages):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return "找到在售手机。"
+        system = messages[0]["content"]
+        assert "汽车" in system
+        assert "不在商品品类中" in system
+        return "图片里是一辆汽车，商品库没有这个品类。"
+
+    monkeypatch.setattr("services.agent_dialogue.recognize_photo", fake_photo)
+    monkeypatch.setattr("services.agent_dialogue.complete", fake_complete)
+    headers = _login(client)
+    first = _chat(client, headers, "便宜一点的手机")
+    session_id = first.get_json()["data"]["session_id"]
+    response = _chat(
+        client,
+        headers,
+        "",
+        session_id,
+        filename="汽车.jpg",
+        image_data_url="data:image/jpeg;base64,cccc",
+    )
+    assert response.status_code == 200
+    body = response.get_json()["data"]
+    assert body["recognition"]["seen"] == "汽车"
+    assert body["recognition"]["matched"] is False
+    assert body["slots"]["category"] is None
+    assert body["items"] == []
+    assert "汽车" in body["reply"]
+
+
+def test_recognize_photo_reports_object_outside_catalog(app, monkeypatch):
+    from services.agent_dialogue import recognize_photo
+
+    monkeypatch.setattr(
+        "services.agent_dialogue.complete",
+        lambda _messages: '{"seen":"汽车","category":"汽车","brand":"福特","condition":"九成新","description":"一辆白色跑车"}',
+    )
+    with app.app_context():
+        result = recognize_photo("data:image/jpeg;base64,cccc")
+    assert result["matched"] is False
+    assert result["seen"] == "汽车"
+    assert result["category"] is None
+
+
+def test_invalid_image_payload_is_rejected(client):
+    headers = _login(client)
+    response = _chat(client, headers, "", filename="a.jpg", image_data_url="not-an-image")
+    assert response.status_code == 422
 
 
 def test_assistant_requires_login(client):
