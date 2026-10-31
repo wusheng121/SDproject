@@ -1,5 +1,5 @@
 from extensions import db
-from models import Product, User, UserBehavior
+from models import Product, User
 
 
 def _login(client):
