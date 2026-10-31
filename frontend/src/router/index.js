@@ -9,7 +9,10 @@ import Favorites from "../views/Favorites.vue";
 import UserCenter from "../views/UserCenter.vue";
 import ProductPublish from "../views/ProductPublish.vue";
 import AdminPanel from "../views/AdminPanel.vue";
+import Assistant from "../views/Assistant.vue";
 import RecommendationTest from "../views/RecommendationTest.vue";
+import Cart from "../views/Cart.vue";
+import Orders from "../views/Orders.vue";
 import { useUserStore } from "../stores/user";
 
 const routes = [
@@ -31,6 +34,12 @@ const routes = [
   { path: "/register", name: "Register", component: Register },
   { path: "/login", name: "Login", component: Login },
   {
+    path: "/assistant",
+    name: "Assistant",
+    component: Assistant,
+    meta: { requiresAuth: true }
+  },
+  {
     path: "/favorites",
     name: "Favorites",
     component: Favorites,
@@ -40,6 +49,18 @@ const routes = [
     path: "/recommendation-test",
     name: "RecommendationTest",
     component: RecommendationTest,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: "/cart",
+    name: "Cart",
+    component: Cart,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: "/orders",
+    name: "Orders",
+    component: Orders,
     meta: { requiresAuth: true }
   },
   {

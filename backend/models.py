@@ -203,6 +203,8 @@ class Product(db.Model, TimestampMixin):
     trade_method = db.Column(db.String(30), nullable=True)
     trade_location = db.Column(db.String(200), nullable=True)
     image_url = db.Column(db.String(500), nullable=True)
+    ai_category = db.Column(db.String(50), nullable=True)
+    ai_condition = db.Column(db.String(20), nullable=True)
     status = db.Column(db.String(20), default="pending", nullable=False, index=True)
     seller_id = db.Column(
         db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
@@ -338,6 +340,21 @@ class OrderItem(db.Model):
     quantity = db.Column(db.Integer, nullable=False, default=1)
     price = db.Column(db.Float, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+
+class AgentDialogue(db.Model):
+    """用户与只读 Agent 的多轮会话。slots 保存追问时沿用的筛选条件。"""
+
+    __tablename__ = "agent_dialogues"
+
+    id = db.Column(db.String(64), primary_key=True)
+    user_id = db.Column(db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    slots_json = db.Column(db.Text, nullable=False, default="{}")
+    messages_json = db.Column(db.Text, nullable=False, default="[]")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
 
 
 class Review(db.Model):

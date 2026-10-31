@@ -29,6 +29,12 @@ export function apiRecognizeProduct(image) {
   return http.post("/ai/recognize", data);
 }
 
+export function apiRecognizeListing(image) {
+  const data = new FormData();
+  data.append("image", image);
+  return http.post("/ai/listing-recognize", data, { timeout: 60000 });
+}
+
 export function apiGetPriceReference(params) {
   return http.get("/products/price-reference", { params });
 }

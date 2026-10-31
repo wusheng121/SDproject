@@ -56,7 +56,11 @@ class BaseConfig:
         "DATABASE_URL",
         "mysql+pymysql://campus:campus@127.0.0.1:3307/campus_market?charset=utf8mb4",
     )
-    REDIS_URL = os.getenv("REDIS_URL", "")
+    # 宿主机默认连 Docker Desktop 映射的 Redis。容器内由 docker-compose 覆盖成 redis://redis:6379/0。
+    REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
+    CACHE_LOCAL_TTL_SECONDS = int(os.getenv("CACHE_LOCAL_TTL_SECONDS", "20"))
+    CACHE_REDIS_TTL_SECONDS = int(os.getenv("CACHE_REDIS_TTL_SECONDS", "120"))
+    CACHE_LOCAL_MAX_ITEMS = int(os.getenv("CACHE_LOCAL_MAX_ITEMS", "256"))
 
 
 class DevelopmentConfig(BaseConfig):
@@ -68,6 +72,7 @@ class TestingConfig(BaseConfig):
     DEBUG = False
     SECRET_KEY = "test-secret-0123456789abcdef0123456789"
     DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite:///:memory:")
+    REDIS_URL = ""
     RATELIMIT_ENABLED = False
     RATELIMIT_STORAGE_URI = "memory://"
     BCRYPT_COST = 4

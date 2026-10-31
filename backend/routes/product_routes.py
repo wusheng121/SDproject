@@ -5,6 +5,9 @@ from sqlalchemy import func, or_
 from auth import current_user, login_required
 from extensions import db
 from models import Category, Product, ProductCategory, UserBehavior
+from services.cache_store import read_through
+from services.listing_vision import ListingVisionError, recognize_listing
+from services.market_signals import price_reference as deal_price_reference
 from utils.response import err, ok
 
 CONDITION_RANKS = {
@@ -30,6 +33,43 @@ def _condition_filter(query, minimum):
             if rank >= CONDITION_RANKS[minimum]
         ])
     )
+
+
+def _product_snapshot(product_id: int):
+    product = db.session.get(Product, product_id)
+    if product is None:
+        return None
+    categories = (
+        db.session.query(Category.name)
+        .join(ProductCategory, ProductCategory.category_id == Category.id)
+        .filter(ProductCategory.product_id == product_id)
+        .all()
+    )
+    seller = product.seller
+    return {
+        "id": product.id,
+        "name": product.name,
+        "description": product.description,
+        "price": product.price,
+        "condition": product.condition,
+        "brand": product.brand,
+        "has_notes": product.has_notes,
+        "defect_description": product.defect_description,
+        "trade_method": product.trade_method,
+        "trade_location": product.trade_location,
+        "image_url": product.image_url,
+        "status": product.status,
+        "categories": [name for (name,) in categories],
+        "seller": {"id": seller.id, "username": seller.username} if seller else None,
+        "created_at": product.created_at.isoformat() if product.created_at else None,
+    }
+
+
+def _price_reference_snapshot(category_name: str):
+    if not Category.query.filter_by(name=category_name).first():
+        return None
+    return deal_price_reference(category_name)
+
 
 product_bp = Blueprint("product_bp", __name__, url_prefix="/api")
 
@@ -170,53 +210,18 @@ def product_detail(product_id: int):
     """
     GET /api/products/:id
     """
-    p = Product.query.get(product_id)
-    if not p:
+    payload = read_through(f"product:{product_id}", lambda: _product_snapshot(product_id))
+    if payload is None:
         return err("商品不存在", code=40401, http_status=404)
 
-    # 获取品类
-    categories = (
-        db.session.query(Category.name)
-        .join(ProductCategory, ProductCategory.category_id == Category.id)
-        .filter(ProductCategory.product_id == product_id)
-        .all()
-    )
-
-    # 获取卖家信息
-    seller = p.seller
-    seller_info = {
-        "id": seller.id,
-        "username": seller.username,
-    } if seller else None
-
-    # 如果用户已登录，返回是否收藏
     user = current_user()
     is_favorited = None
     if user:
         is_favorited = UserBehavior.query.filter_by(
-            user_id=user.id, product_id=p.id, behavior_type="favorite"
+            user_id=user.id, product_id=product_id, behavior_type="favorite"
         ).first() is not None
-
-    return ok(
-        {
-            "id": p.id,
-            "name": p.name,
-            "description": p.description,
-            "price": p.price,
-            "condition": p.condition,
-            "brand": p.brand,
-            "has_notes": p.has_notes,
-            "defect_description": p.defect_description,
-            "trade_method": p.trade_method,
-            "trade_location": p.trade_location,
-            "image_url": p.image_url,
-            "status": p.status,
-            "categories": [x[0] for x in categories],
-            "seller": seller_info,
-            "is_favorited": is_favorited,
-            "created_at": p.created_at.isoformat() if p.created_at else None,
-        }
-    )
+    payload["is_favorited"] = is_favorited
+    return ok(payload)
 
 
 @product_bp.get("/products/search")
@@ -294,7 +299,10 @@ def list_categories():
     GET /api/categories
     返回所有品类名称列表
     """
-    names = [c.name for c in Category.query.order_by(Category.name.asc()).all()]
+    names = read_through(
+        "categories",
+        lambda: [c.name for c in Category.query.order_by(Category.name.asc()).all()],
+    )
     return ok({"items": names})
 
 
@@ -314,31 +322,32 @@ def recognize_product_image():
     return ok({"recognition": result, "mock": True})
 
 
+@product_bp.post("/ai/listing-recognize")
+@login_required
+def recognize_listing_image(user):
+    """识图发单。失败时不返回猜测结果，发布页保持空白。"""
+    image = request.files.get("image")
+    if image is None:
+        return err("请先选择一张商品图片", code=40001, http_status=400)
+    try:
+        result = recognize_listing(image.read(4 * 1024 * 1024 + 1), image.mimetype or "")
+    except ListingVisionError as exc:
+        return ok({"recognition": None, "message": str(exc)})
+    return ok({"recognition": result})
+
+
 @product_bp.get("/products/price-reference")
 def price_reference():
     category_name = (request.args.get("category") or "").strip()
-    condition = (request.args.get("condition") or "").strip()
-    if not category_name or condition not in CONDITION_RANKS:
-        return err("请选择品类和成色", code=40001, http_status=400)
-
-    query = Product.query.join(ProductCategory).join(Category).filter(
-        Product.status == "approved",
-        Category.name == category_name,
+    if not category_name:
+        return err("请选择品类", code=40001, http_status=400)
+    payload = read_through(
+        f"price:{category_name}",
+        lambda: _price_reference_snapshot(category_name),
     )
-    query = _condition_filter(query, condition)
-    prices = sorted(price for (price,) in query.with_entities(Product.price).all())
-    if not prices:
-        return ok({"category": category_name, "condition": condition, "sample_count": 0, "min_price": None, "median_price": None, "max_price": None})
-    middle = len(prices) // 2
-    median = prices[middle] if len(prices) % 2 else (prices[middle - 1] + prices[middle]) / 2
-    return ok({
-        "category": category_name,
-        "condition": condition,
-        "sample_count": len(prices),
-        "min_price": round(prices[0], 2),
-        "median_price": round(median, 2),
-        "max_price": round(prices[-1], 2),
-    })
+    if payload is None:
+        return err("商品品类不存在", code=40001, http_status=400)
+    return ok(payload)
 
 
 def _optional_text(data, key, max_length):
@@ -367,6 +376,13 @@ def publish_product(user):
     if not category:
         return err("商品品类不存在", code=40001, http_status=400)
 
+    ai_category = _optional_text(data, "ai_category", 50)
+    ai_condition = _optional_text(data, "ai_condition", 20)
+    if ai_category and not Category.query.filter_by(name=ai_category).first():
+        ai_category = None
+    if ai_condition not in CONDITION_RANKS:
+        ai_condition = None
+
     product = Product(
         name=name,
         description=_optional_text(data, "description", 4000),
@@ -378,6 +394,8 @@ def publish_product(user):
         trade_method=_optional_text(data, "trade_method", 30),
         trade_location=_optional_text(data, "trade_location", 200),
         image_url=_optional_text(data, "image_url", 500),
+        ai_category=ai_category,
+        ai_condition=ai_condition,
         status="pending",
         seller_id=user.id,
     )

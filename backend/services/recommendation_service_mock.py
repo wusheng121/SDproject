@@ -1,12 +1,12 @@
 from collections import Counter
 
 from flask import Blueprint, request
-from sqlalchemy import func
 
 from auth import login_required
 from extensions import db
-from models import BehaviorEvent, Category, Product, ProductCategory
+from models import Category, Product, ProductCategory
 from services.behavior_service import BEHAVIOR_WEIGHTS, recent_behavior_rows
+from services.market_signals import recent_behavior_counts
 from utils.response import api_error, api_ok
 
 recommendation_bp = Blueprint("recommendation_bp", __name__, url_prefix="/api")
@@ -45,12 +45,7 @@ def _recommend(user_id, categories, behavior_count, limit, offset, forced_stage=
     for product_id, category_name in rows:
         category_by_product.setdefault(product_id, []).append(category_name)
 
-    popularity = dict(
-        BehaviorEvent.recent()
-        .with_entities(BehaviorEvent.product_id, func.count(BehaviorEvent.id))
-        .group_by(BehaviorEvent.product_id)
-        .all()
-    )
+    popularity = recent_behavior_counts()
     seen_ids = {row.product_id for row in history}
     products = Product.query.filter_by(status="approved").all()
     user_category_scores = Counter()
@@ -69,21 +64,27 @@ def _recommend(user_id, categories, behavior_count, limit, offset, forced_stage=
         preference_match = sum(1 for name in product_categories if name in preferred)
         behavior_match = sum(user_category_scores[name] for name in product_categories)
         popularity_score = int(popularity.get(product.id, 0))
+        ai_name = (product.ai_category or "").strip()
+        ai_bonus = 0
+        if ai_name and ai_name not in product_categories and (ai_name in preferred or user_category_scores.get(ai_name)):
+            ai_bonus = 5
 
         if stage == "A":
-            score = popularity_score
+            score = popularity_score + ai_bonus
             reason = "校园热门"
         elif stage == "B":
             if not preference_match:
                 continue
-            score = preference_match * 100 + popularity_score
+            score = preference_match * 100 + popularity_score + ai_bonus
             reason = f"符合兴趣：{', '.join(name for name in product_categories if name in preferred)}"
         elif stage == "C":
-            score = preference_match * 70 + behavior_match * 30 + popularity_score
+            score = preference_match * 70 + behavior_match * 30 + popularity_score + ai_bonus
             reason = "兴趣偏好与近7天行为共同匹配" if behavior_match else "根据兴趣偏好推荐"
         else:
-            score = behavior_match * 100 + preference_match * 10 + popularity_score
+            score = behavior_match * 100 + preference_match * 10 + popularity_score + ai_bonus
             reason = "与你近7天互动过的同类商品相似" if behavior_match else "协同行为热度补充"
+        if ai_bonus and preference_match:
+            reason = f"{reason}，识图标签补充"
 
         scored.append((score, popularity_score, product.created_at, product, reason, product_categories))
 
@@ -158,27 +159,46 @@ def get_similar_products(product_id):
     product = db.session.get(Product, product_id)
     if not product:
         return api_error("NOT_FOUND", "商品不存在", 404)
-    category_ids = [row.category_id for row in product.categories]
-    if not category_ids:
+    confirmed_names = [link.category.name for link in product.categories if link.category]
+    if not confirmed_names and not product.ai_category:
         return api_ok({"product_id": product_id, "items": []})
-    candidates = (
-        Product.query.join(ProductCategory, ProductCategory.product_id == Product.id)
-        .filter(ProductCategory.category_id.in_(category_ids), Product.status == "approved", Product.id != product_id)
-        .limit(6)
-        .all()
-    )
-    return api_ok({
-        "product_id": product_id,
-        "items": [
-            {
-                "id": item.id,
-                "name": item.name,
-                "price": item.price,
-                "condition": item.condition,
-                "image_url": item.image_url,
-                "categories": [link.category.name for link in item.categories],
-                "reason": "同品类商品",
-            }
-            for item in candidates
-        ],
-    })
+    category_ids = [row.category_id for row in product.categories]
+    primary = []
+    if category_ids:
+        primary = (
+            Product.query.join(ProductCategory, ProductCategory.product_id == Product.id)
+            .filter(ProductCategory.category_id.in_(category_ids), Product.status == "approved", Product.id != product_id)
+            .limit(6)
+            .all()
+        )
+    seen_ids = {product_id, *(item.id for item in primary)}
+    supplement_tags = [name for name in confirmed_names if name]
+    if product.ai_category and product.ai_category not in supplement_tags:
+        supplement_tags.append(product.ai_category)
+    extras = []
+    if supplement_tags and len(primary) < 6:
+        extras = (
+            Product.query.filter(
+                Product.status == "approved",
+                Product.id.notin_(seen_ids),
+                Product.ai_category.in_(supplement_tags),
+            )
+            .limit(6 - len(primary))
+            .all()
+        )
+    items = [_similar_item(item, "同品类商品") for item in primary]
+    items.extend(_similar_item(item, "识图标签补充") for item in extras)
+    return api_ok({"product_id": product_id, "items": items})
+
+
+def _similar_item(item: Product, reason: str) -> dict:
+    return {
+        "id": item.id,
+        "name": item.name,
+        "price": item.price,
+        "condition": item.condition,
+        "image_url": item.image_url,
+        "categories": [link.category.name for link in item.categories if link.category],
+        "ai_category": item.ai_category,
+        "reason": reason,
+    }

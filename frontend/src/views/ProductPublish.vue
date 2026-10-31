@@ -8,10 +8,10 @@
     <div class="publish-layout">
       <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="publish-form" @submit.prevent="submitForm">
         <section class="form-section ai-section">
-          <div class="section-heading"><div><span class="section-kicker">OPTIONAL AI ASSIST</span><h2>拍张照片，AI 帮你填写</h2><p>识别商品品类、品牌与成色，结果都可以手动修改。</p></div><span class="ai-badge">智能辅助</span></div>
+          <div class="section-heading"><div><span class="section-kicker">识图发单</span><h2>拍张照片，帮你填发布单</h2><p>识别名称、品类和成色，并带出同类参考价。结果都能改，不会直接定售价。没识别出来就留空，仍然可以发布。</p></div><span class="ai-badge">识图发单</span></div>
           <div class="recognition-tools">
             <input ref="imageInput" type="file" accept="image/*" hidden @change="recognizeImage" />
-            <el-button type="primary" :loading="recognizing" @click="imageInput?.click()">{{ recognizing ? "正在识别…" : "选择商品照片" }}</el-button>
+            <el-button type="primary" :loading="recognizing" @click="imageInput?.click()">{{ recognizing ? "正在识别…" : "识图发单" }}</el-button>
             <span>可选步骤 · 不使用也可以直接填写</span>
           </div>
           <img v-if="imagePreview" :src="imagePreview" class="image-preview" alt="商品图片预览" />
@@ -37,10 +37,11 @@
           <div class="section-heading"><div><span class="section-kicker">02 · 价格板块</span><h2>价格与交易</h2><p>查看同类商品行情，再填写期望价格和交接方式。</p></div></div>
           <el-form-item label="期望价格（元）" prop="price"><el-input v-model="form.price" type="number" min="0.01" step="0.01" placeholder="输入你期望的售价" /></el-form-item>
           <div class="price-reference">
-            <div><strong>同类商品价格参考</strong><span v-if="priceReference">{{ priceReference.sample_count }} 件已审核商品</span></div>
-            <p v-if="priceReference?.sample_count">近期价格 {{ priceReference.min_price }} - {{ priceReference.max_price }} 元，中位数 {{ priceReference.median_price }} 元</p>
-            <p v-else>{{ priceReference ? "暂无足够的同类历史商品，可自行定价。" : "选择品类和成色后查询历史参考价。" }}</p>
-            <el-button size="small" :loading="loadingPrice" :disabled="!form.category || !form.condition" @click="loadPriceReference">查询价格参考</el-button>
+            <div><strong>该品类参考成交价</strong><span v-if="priceReference">{{ priceReference.sample_count }} 笔已支付成交</span></div>
+            <p v-if="priceReference?.sample_count">成交价 {{ priceReference.min_price }} - {{ priceReference.max_price }} 元。近 7 天有 {{ priceReference.behavior_product_count }} 件同类商品被浏览、收藏或加购。</p>
+            <p v-else>{{ priceReference ? "暂无该品类的成交记录，请自行定价。" : "识别或选择品类后，带出成交价区间。" }}</p>
+            <p class="form-tip">成交价来自已支付订单，和行为记录用的是同一套数据，只作建议，不会写入售价。你改过的品类和成色优先用于推荐，识图标签只作补充。</p>
+            <el-button size="small" :loading="loadingPrice" :disabled="!form.category" @click="loadPriceReference">查询价格参考</el-button>
           </div>
           <div class="two-columns">
             <el-form-item label="交易方式"><el-select v-model="form.trade_method" clearable placeholder="请选择"><el-option label="校内当面交易" value="线下当面" /><el-option label="快递邮寄" value="快递邮寄" /><el-option label="均可协商" value="均可协商" /></el-select></el-form-item>
@@ -51,7 +52,7 @@
       </el-form>
       <aside class="guide-panel">
         <div class="guide-heading"><span class="guide-mark">✓</span><div><h2>发布小贴士</h2><p>把这几项写好，更容易成交</p></div></div>
-        <ul><li><strong>标题写清品牌和型号</strong><span>方便买家搜索和判断</span></li><li><strong>成色选择贴近实际</strong><span>笔记、磨损情况可以单独说明</span></li><li><strong>先参考行情再定价</strong><span>价格建议基于同类已审核商品</span></li></ul>
+        <ul><li><strong>标题写清品牌和型号</strong><span>方便买家搜索和判断</span></li><li><strong>成色选择贴近实际</strong><span>笔记、磨损情况可以单独说明</span></li><li><strong>先看成交价再定价</strong><span>参考区间来自已支付订单，售价仍由你填写</span></li></ul>
         <div class="review-note"><strong>提交后会发生什么？</strong><p>商品将进入管理员审核，通过后展示在商品列表。</p></div>
       </aside>
     </div>
@@ -62,7 +63,7 @@
 import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
-import { apiGetPriceReference, apiListCategories, apiPublishProduct, apiRecognizeProduct } from "../api/products";
+import { apiGetPriceReference, apiListCategories, apiPublishProduct, apiRecognizeListing } from "../api/products";
 
 const router = useRouter();
 const formRef = ref(null);
@@ -74,6 +75,7 @@ const loadingPrice = ref(false);
 const submitting = ref(false);
 const priceReference = ref(null);
 const imagePreview = ref("");
+const aiTags = ref({ category: "", condition: "" });
 const form = reactive({ name: "", brand: "", category: "", description: "", condition: "", has_notes: false, defect_description: "", price: "", trade_method: "", trade_location: "" });
 const rules = {
   name: [{ required: true, message: "请填写商品名称", trigger: "blur" }],
@@ -100,29 +102,42 @@ async function recognizeImage(event) {
   const image = event.target.files?.[0];
   event.target.value = "";
   if (!image) return;
+  if (image.size > 4 * 1024 * 1024) {
+    ElMessage.warning("图片请小于 4MB，表单没有改动，可以直接填写");
+    return;
+  }
   if (imagePreview.value) URL.revokeObjectURL(imagePreview.value);
   imagePreview.value = URL.createObjectURL(image);
   recognizing.value = true;
   try {
-    const response = await apiRecognizeProduct(image);
+    const response = await apiRecognizeListing(image);
     const result = response.data.data.recognition;
-    form.name = result.name || form.name;
-    form.brand = result.brand || form.brand;
-    form.condition = result.condition || form.condition;
-    form.category = categories.value.includes(result.category) ? result.category : form.category;
-    ElMessage.success("已填入识别建议，请核对并修改");
+    if (!result) {
+      ElMessage.warning(response.data.data.message || "没识别出来，表单保持空白，可以直接填写");
+      return;
+    }
+    const category = categories.value.includes(result.category) ? result.category : "";
+    const condition = conditionOptions.includes(result.condition) ? result.condition : "";
+    aiTags.value = { category, condition };
+    if (result.name) form.name = result.name;
+    if (result.brand) form.brand = result.brand;
+    if (result.description) form.description = result.description;
+    if (condition) form.condition = condition;
+    if (category) form.category = category;
+    if (category) await loadPriceReference();
+    ElMessage.success("已填入识图建议和参考成交价，请核对。售价仍由你填写");
   } catch (error) {
-    ElMessage.error(error.message || "图片识别失败");
+    ElMessage.warning(error.message || "没识别出来，表单保持空白，可以直接填写");
   } finally {
     recognizing.value = false;
   }
 }
 
 async function loadPriceReference() {
-  if (!form.category || !form.condition) return;
+  if (!form.category) return;
   loadingPrice.value = true;
   try {
-    const response = await apiGetPriceReference({ category: form.category, condition: form.condition });
+    const response = await apiGetPriceReference({ category: form.category });
     priceReference.value = response.data.data;
   } catch (error) {
     ElMessage.error(error.message || "价格参考获取失败");
@@ -140,7 +155,12 @@ async function submitForm() {
   }
   submitting.value = true;
   try {
-    await apiPublishProduct({ ...form, price: Number(form.price) });
+    await apiPublishProduct({
+      ...form,
+      price: Number(form.price),
+      ai_category: aiTags.value.category || undefined,
+      ai_condition: aiTags.value.condition || undefined
+    });
     ElMessage.success("商品已提交审核");
     router.push("/user-center");
   } catch (error) {
