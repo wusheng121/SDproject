@@ -9,7 +9,6 @@ export function apiProductDetail(id) {
 }
 
 export function apiSearchProducts(params) {
-  // 兼容旧用法：传字符串时当作 q
   if (typeof params === "string") {
     return http.get("/products/search", { params: { q: params } });
   }
@@ -20,17 +19,24 @@ export function apiListCategories() {
   return http.get("/categories");
 }
 
-// TODO: 商品发布接口，待实现
 export function apiPublishProduct(data) {
   return http.post("/products", data);
 }
 
-// TODO: 商品编辑接口，待实现
+export function apiRecognizeProduct(image) {
+  const data = new FormData();
+  data.append("image", image);
+  return http.post("/ai/recognize", data);
+}
+
+export function apiGetPriceReference(params) {
+  return http.get("/products/price-reference", { params });
+}
+
 export function apiEditProduct(id, data) {
   return http.put(`/products/${id}`, data);
 }
 
-// TODO: 商品删除接口，待实现
 export function apiDeleteProduct(id) {
   return http.delete(`/products/${id}`);
 }

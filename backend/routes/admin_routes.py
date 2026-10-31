@@ -5,7 +5,18 @@ from sqlalchemy import or_
 
 from auth import permission_required, revoke_all_sessions
 from extensions import db
-from models import ApiKey, OperationLog, Order, Product, Role, User, UserBehavior, UserRole
+from models import (
+    ApiKey,
+    BehaviorEvent,
+    OperationLog,
+    Order,
+    Product,
+    Role,
+    User,
+    UserBehavior,
+    UserRole,
+)
+from services.behavior_service import recent_behavior_rows, serialize_behavior_event
 from utils.audit import log_operation
 from utils.response import api_error, api_ok
 from utils.serializers import (
@@ -69,7 +80,14 @@ def get_user(admin, user_id):
     user = db.session.get(User, user_id)
     if not user:
         return api_error("NOT_FOUND", "用户不存在", 404)
-    return api_ok({"user": user_public(user, include_permissions=True)})
+    recent_behaviors = [
+        serialize_behavior_event(event) for event in recent_behavior_rows(user.id)
+    ]
+    return api_ok({
+        "user": user_public(user, include_permissions=True),
+        "recent_behaviors": recent_behaviors,
+        "behavior_window_days": 7,
+    })
 
 
 @admin_bp.post("/users/<int:user_id>/ban")
@@ -249,6 +267,8 @@ def get_stats(admin):
     pending_products = Product.query.filter_by(status="pending").count()
     approved_products = Product.query.filter_by(status="approved").count()
     total_behaviors = UserBehavior.query.count()
+    total_behavior_events = BehaviorEvent.query.count()
+    recent_behavior_events = BehaviorEvent.recent().count()
     total_orders = Order.query.count()
     today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
     return api_ok(
@@ -260,6 +280,9 @@ def get_stats(admin):
                 "approved": approved_products,
             },
             "behaviors": total_behaviors,
+            "behavior_events": total_behavior_events,
+            "recent_behavior_events": recent_behavior_events,
+            "behavior_window_days": 7,
             "orders": total_orders,
             "today": {
                 "users": User.query.filter(User.created_at >= today).count(),

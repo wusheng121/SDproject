@@ -94,7 +94,7 @@
 import { ref, watch } from "vue";
 import { ElMessage } from "element-plus";
 import { apiListCategories } from "../api/products";
-import { apiSavePreferences } from "../api/user";
+import { apiGetPreferences, apiSavePreferences } from "../api/user";
 
 const props = defineProps({
   modelValue: Boolean,
@@ -130,6 +130,7 @@ watch(
     visible.value = val;
     if (val) {
       loadCategories();
+      loadPreferences();
     }
   }
 );
@@ -151,22 +152,35 @@ async function loadCategories() {
   }
 }
 
-async function handleSave() {
-  if (selectedCategories.value.length === 0) {
-    ElMessage.warning("请至少选择一个品类");
-    return;
+async function loadPreferences() {
+  try {
+    const res = await apiGetPreferences();
+    selectedCategories.value = res?.data?.data?.preferred_categories || [];
+  } catch (error) {
+    console.error("加载兴趣偏好失败:", error);
   }
-  await apiSavePreferences(selectedCategories.value);
-  ElMessage.success("🎉 兴趣标签已保存");
-  visible.value = false;
-  emit("saved", selectedCategories.value);
 }
 
-function handleSkip() {
-  apiSavePreferences([]);
-  ElMessage.info("已跳过兴趣选择，将为您推荐全局热门商品");
-  visible.value = false;
-  emit("saved", []);
+async function handleSave() {
+  try {
+    await apiSavePreferences(selectedCategories.value);
+    ElMessage.success("兴趣标签已保存");
+    visible.value = false;
+    emit("saved", selectedCategories.value);
+  } catch (error) {
+    ElMessage.error(error?.message || "保存兴趣偏好失败");
+  }
+}
+
+async function handleSkip() {
+  try {
+    await apiSavePreferences([]);
+    ElMessage.info("已清空兴趣偏好，将为您推荐校园热门商品");
+    visible.value = false;
+    emit("saved", []);
+  } catch (error) {
+    ElMessage.error(error?.message || "更新兴趣偏好失败");
+  }
 }
 
 function handleSelectAll() {
