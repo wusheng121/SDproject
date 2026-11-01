@@ -43,6 +43,9 @@
                 {{ statusText(product.status) }}
               </el-tag>
             </div>
+            <p v-if="isOwner && product.status === 'rejected'" class="reject-reason">
+              {{ product.reject_reason ? `拒绝原因：${product.reject_reason}` : "管理员拒绝了这件商品，但没有留下原因。" }}
+            </p>
             <div class="meta-item">
               <span class="meta-label">卖家：</span>
               <span>{{ product.seller?.username || '未知' }}</span>
@@ -65,12 +68,16 @@
             >
               {{ cartButtonText }}
             </el-button>
-            <el-button type="primary" size="large" plain @click="handleContact">
-              联系卖家
-            </el-button>
-            <el-button 
-              :type="isFavorited ? 'danger' : 'default'" 
-              size="large" 
+            <el-button v-if="isOwner && product.status !== 'offline'" size="large" @click="router.push(`/publish?id=${product.id}`)">编辑商品</el-button>
+            <el-button v-if="isOwner && product.status === 'approved'" size="large" type="warning" @click="offlineProduct">下架商品</el-button>
+            <el-button v-if="isOwner && product.status === 'pending'" size="large" type="warning" @click="withdrawProduct">撤回商品</el-button>
+            <el-button v-if="isOwner && (product.status === 'rejected' || product.status === 'offline')" size="large" type="danger" @click="removeProduct">删除商品</el-button>
+            <el-button v-if="!isOwner" type="primary" size="large" plain @click="handleContact">联系卖家</el-button>
+            <el-button v-else size="large" plain @click="router.push('/messages')">买家消息</el-button>
+            <el-button
+              v-if="product.status !== 'offline'"
+              :type="isFavorited ? 'danger' : 'default'"
+              size="large"
               @click="toggleFavorite"
             >
               <span v-if="isFavorited">💔 取消收藏</span>
@@ -112,10 +119,10 @@
 <script setup>
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 
 import ProductCard from "../components/ProductCard.vue";
-import { apiProductDetail, apiListProducts } from "../api/products";
+import { apiDeleteProduct, apiListProducts, apiProductDetail } from "../api/products";
 import { apiAddBehavior, apiToggleFavorite } from "../api/behavior";
 import { apiAddToCart, apiProductReviews } from "../api/trade";
 import { useUserStore } from "../stores/user";
@@ -135,6 +142,52 @@ const canAddToCart = computed(() => {
   const mine = userStore.profile?.id && product.value.seller?.id === userStore.profile.id;
   return product.value.status === "approved" && !mine;
 });
+const isOwner = computed(() => Boolean(userStore.profile?.id && product.value?.seller?.id === userStore.profile.id));
+
+async function offlineProduct() {
+  try {
+    await ElMessageBox.confirm("下架后买家不能再购买这件商品。", "下架商品", { confirmButtonText: "下架", cancelButtonText: "取消", type: "warning" });
+  } catch {
+    return;
+  }
+  try {
+    await apiDeleteProduct(product.value.id);
+    ElMessage.success("商品已下架");
+    await loadProduct();
+  } catch (error) {
+    ElMessage.error(error.message || "下架失败");
+  }
+}
+
+async function withdrawProduct() {
+  try {
+    await ElMessageBox.confirm("撤回后这件商品会从你的列表和管理员审核里消失，不能恢复。", "撤回商品", { confirmButtonText: "撤回", cancelButtonText: "取消", type: "warning" });
+  } catch {
+    return;
+  }
+  try {
+    await apiDeleteProduct(product.value.id);
+    ElMessage.success("商品已撤回");
+    router.push("/user-center");
+  } catch (error) {
+    ElMessage.error(error.message || "撤回失败");
+  }
+}
+
+async function removeProduct() {
+  try {
+    await ElMessageBox.confirm("删除后不能恢复。个人中心和管理员后台都不再显示这件商品。", "删除商品", { confirmButtonText: "删除", cancelButtonText: "取消", type: "warning" });
+  } catch {
+    return;
+  }
+  try {
+    await apiDeleteProduct(product.value.id);
+    ElMessage.success("商品已删除");
+    router.push("/user-center");
+  } catch (error) {
+    ElMessage.error(error.message || "删除失败");
+  }
+}
 
 const cartButtonText = computed(() => {
   if (!product.value) return "加入购物车";
@@ -248,8 +301,12 @@ async function toggleFavorite() {
 }
 
 function handleContact() {
-  // TODO: 实现联系卖家功能
-  ElMessage.info("联系卖家功能开发中...");
+  if (!userStore.token) {
+    ElMessage.warning("请先登录");
+    router.push("/login");
+    return;
+  }
+  router.push({ path: "/messages", query: { product: product.value.id } });
 }
 
 function openProduct(p) {
@@ -272,7 +329,8 @@ function statusText(status) {
     'pending': '待审核',
     'approved': '在售',
     'rejected': '已拒绝',
-    'sold': '已售出'
+    'sold': '已售出',
+    'offline': '已下架'
   };
   return map[status] || status;
 }
@@ -392,6 +450,13 @@ onMounted(() => {
   font-size: 18px;
   font-weight: 600;
   margin: 0 0 12px 0;
+.reject-reason {
+  margin: -4px 0 0;
+  color: #c45656;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
   color: var(--text-primary);
 }
 

@@ -13,6 +13,7 @@ import Assistant from "../views/Assistant.vue";
 import RecommendationTest from "../views/RecommendationTest.vue";
 import Cart from "../views/Cart.vue";
 import Orders from "../views/Orders.vue";
+import Messages from "../views/Messages.vue";
 import { useUserStore } from "../stores/user";
 
 const routes = [
@@ -61,6 +62,12 @@ const routes = [
     path: "/orders",
     name: "Orders",
     component: Orders,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: "/messages",
+    name: "Messages",
+    component: Messages,
     meta: { requiresAuth: true }
   },
   {

@@ -254,3 +254,33 @@ def test_invalid_image_payload_is_rejected(client):
 def test_assistant_requires_login(client):
     response = client.post("/api/v1/assistant/chat", json={"message": "耳机"})
     assert response.status_code == 401
+
+
+def test_chat_history_is_listed_for_the_owner_only(client):
+    owner = _login(client)
+    other = client.post(
+        "/api/v1/auth/login",
+        json={"identifier": "admin", "password": "Admin12345"},
+    )
+    assert other.status_code == 200
+    other_headers = {"Authorization": f"Bearer {other.get_json()['data']['access_token']}"}
+
+    sent = _chat(client, owner, "平板")
+    assert sent.status_code == 200
+    session_id = sent.get_json()["data"]["session_id"]
+
+    listed = client.get("/api/v1/assistant/sessions", headers=owner)
+    assert listed.status_code == 200
+    rows = listed.get_json()["data"]
+    assert any(row["id"] == session_id and row["preview"] == "平板" for row in rows)
+
+    detail = client.get(f"/api/v1/assistant/sessions/{session_id}", headers=owner)
+    assert detail.status_code == 200
+    messages = detail.get_json()["data"]["messages"]
+    assert messages[0] == {"role": "user", "content": "平板"}
+    assert messages[1]["role"] == "assistant"
+    assert messages[1]["content"]
+    assert messages[1]["items"]
+
+    hidden = client.get(f"/api/v1/assistant/sessions/{session_id}", headers=other_headers)
+    assert hidden.status_code == 404

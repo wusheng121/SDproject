@@ -90,6 +90,7 @@ const navItems = computed(() => {
   if (userStore.token) {
     items.push({ path: "/cart", label: "购物车" });
     items.push({ path: "/orders", label: "订单" });
+    items.push({ path: "/messages", label: "消息" });
     items.push({ path: "/assistant", label: "购物助手" });
   }
   if (userStore.isAdmin) items.push({ path: "/admin", label: "管理后台" });

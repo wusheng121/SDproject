@@ -11,10 +11,17 @@
           <div class="section-heading"><div><span class="section-kicker">识图发单</span><h2>拍张照片，帮你填发布单</h2><p>识别名称、品类和成色，并带出同类参考价。结果都能改，不会直接定售价。没识别出来就留空，仍然可以发布。</p></div><span class="ai-badge">识图发单</span></div>
           <div class="recognition-tools">
             <input ref="imageInput" type="file" accept="image/*" hidden @change="recognizeImage" />
+            <input ref="uploadInput" type="file" accept="image/*" hidden @change="replaceImage" />
             <el-button type="primary" :loading="recognizing" @click="imageInput?.click()">{{ recognizing ? "正在识别…" : "识图发单" }}</el-button>
-            <span>可选步骤 · 不使用也可以直接填写</span>
+            <el-button plain @click="uploadInput?.click()">{{ imagePreview ? "更换图片" : "上传商品图片" }}</el-button>
+            <span>识图会填写名称、品类、成色和描述，照片同时作为商品图片</span>
           </div>
-          <img v-if="imagePreview" :src="imagePreview" class="image-preview" alt="商品图片预览" />
+          <button v-if="!imagePreview" type="button" class="image-placeholder" @click="imageInput?.click()">
+            <strong>拍张照片，自动填写商品信息</strong>
+            <span>点这里会识别并填入下方表单。若只想换图、不改已填内容，用旁边的「上传商品图片」。</span>
+          </button>
+          <img v-else :src="imagePreview" class="image-preview" alt="商品图片预览" />
+          <p class="form-tip">{{ imagePreview ? "这张图会显示在商品详情里。再次识图会按新照片重填名称、品类和成色。" : "不拍照也可以直接填写下面的表单，商品图片可以后补。" }}</p>
         </section>
 
         <section class="form-section">
@@ -61,28 +68,34 @@
 
 <script setup>
 import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
-import { apiGetPriceReference, apiListCategories, apiPublishProduct, apiRecognizeListing } from "../api/products";
+import { apiGetPriceReference, apiListCategories, apiProductDetail, apiPublishProduct, apiRecognizeListing, apiEditProduct, apiUploadProductImage } from "../api/products";
 
 const router = useRouter();
+const route = useRoute();
 const formRef = ref(null);
 const imageInput = ref(null);
+const uploadInput = ref(null);
 const categories = ref([]);
 const conditionOptions = ["全新", "九五新", "九成新", "八成新", "七成新"];
 const recognizing = ref(false);
 const loadingPrice = ref(false);
 const submitting = ref(false);
+const editingId = ref(route.query.id || "");
 const priceReference = ref(null);
 const imagePreview = ref("");
+const previewIsObjectUrl = ref(false);
+const selectedImage = ref(null);
+const savedImageUrl = ref("");
 const aiTags = ref({ category: "", condition: "" });
 const form = reactive({ name: "", brand: "", category: "", description: "", condition: "", has_notes: false, defect_description: "", price: "", trade_method: "", trade_location: "" });
 const rules = {
-  name: [{ required: true, message: "请填写商品名称", trigger: "blur" }],
+  name: [{ required: true, message: "请填写商品名称", trigger: "blur" }, { validator: (_rule, value, callback) => value && value.length <= 80 && !value.includes("<") ? callback() : callback(new Error("名称最多 80 字，且不能包含 HTML 标签")), trigger: "blur" }],
   category: [{ required: true, message: "请选择商品品类", trigger: "change" }],
   condition: [{ required: true, message: "请选择商品成色", trigger: "change" }],
-  description: [{ required: true, message: "请描述商品使用情况", trigger: "blur" }],
-  price: [{ required: true, message: "请填写期望价格", trigger: "blur" }, { validator: (_rule, value, callback) => Number(value) > 0 ? callback() : callback(new Error("价格必须大于 0")), trigger: "blur" }]
+  description: [{ required: true, message: "请描述商品使用情况", trigger: "blur" }, { validator: (_rule, value, callback) => value && value.length <= 1000 && !value.includes("<") ? callback() : callback(new Error("描述最多 1000 字，且不能包含 HTML 标签")), trigger: "blur" }],
+  price: [{ required: true, message: "请填写期望价格", trigger: "blur" }, { validator: (_rule, value, callback) => { const price = Number(value); return price > 0 && price <= 100000 ? callback() : callback(new Error("价格需要大于 0，且不超过 100000")); }, trigger: "blur" }]
 };
 
 onMounted(async () => {
@@ -92,28 +105,67 @@ onMounted(async () => {
   } catch {
     ElMessage.error("商品品类加载失败");
   }
+  if (!editingId.value) return;
+  try {
+    const response = await apiProductDetail(editingId.value);
+    const product = response.data.data;
+    Object.assign(form, {
+      name: product.name || "",
+      brand: product.brand || "",
+      category: product.categories?.[0] || "",
+      description: product.description || "",
+      condition: product.condition || "",
+      has_notes: Boolean(product.has_notes),
+      defect_description: product.defect_description || "",
+      price: product.price || "",
+      trade_method: product.trade_method || "",
+      trade_location: product.trade_location || ""
+    });
+    savedImageUrl.value = product.image_url || "";
+    if (product.image_url) showPreview(product.image_url, false);
+  } catch (error) {
+    ElMessage.error(error.message || "商品加载失败");
+  }
 });
 
 onBeforeUnmount(() => {
-  if (imagePreview.value) URL.revokeObjectURL(imagePreview.value);
+  clearPreview();
 });
+
+function clearPreview() {
+  if (previewIsObjectUrl.value && imagePreview.value) URL.revokeObjectURL(imagePreview.value);
+  previewIsObjectUrl.value = false;
+  imagePreview.value = "";
+}
+
+function showPreview(url, objectUrl) {
+  clearPreview();
+  imagePreview.value = url;
+  previewIsObjectUrl.value = objectUrl;
+}
+
+function useSelectedFile(image) {
+  if (!image) return false;
+  if (image.size > 4 * 1024 * 1024) {
+    ElMessage.warning("图片请小于 4MB");
+    return false;
+  }
+  selectedImage.value = image;
+  showPreview(URL.createObjectURL(image), true);
+  return true;
+}
 
 async function recognizeImage(event) {
   const image = event.target.files?.[0];
   event.target.value = "";
   if (!image) return;
-  if (image.size > 4 * 1024 * 1024) {
-    ElMessage.warning("图片请小于 4MB，表单没有改动，可以直接填写");
-    return;
-  }
-  if (imagePreview.value) URL.revokeObjectURL(imagePreview.value);
-  imagePreview.value = URL.createObjectURL(image);
+  if (!useSelectedFile(image)) return;
   recognizing.value = true;
   try {
     const response = await apiRecognizeListing(image);
     const result = response.data.data.recognition;
     if (!result) {
-      ElMessage.warning(response.data.data.message || "没识别出来，表单保持空白，可以直接填写");
+      ElMessage.warning(response.data.data.message || "没识别出来。照片仍会作为商品图片，其余内容请自己填写");
       return;
     }
     const category = categories.value.includes(result.category) ? result.category : "";
@@ -125,12 +177,22 @@ async function recognizeImage(event) {
     if (condition) form.condition = condition;
     if (category) form.category = category;
     if (category) await loadPriceReference();
-    ElMessage.success("已填入识图建议和参考成交价，请核对。售价仍由你填写");
+    ElMessage.success(priceReference.value
+      ? "已填入识图建议和参考成交价，请核对。售价仍由你填写"
+      : "已填入识图建议，请核对。售价仍由你填写");
   } catch (error) {
-    ElMessage.warning(error.message || "没识别出来，表单保持空白，可以直接填写");
+    ElMessage.warning(error.message || "没识别出来。照片仍会作为商品图片，其余内容请自己填写");
   } finally {
     recognizing.value = false;
   }
+}
+
+function replaceImage(event) {
+  const image = event.target.files?.[0];
+  event.target.value = "";
+  const replacing = Boolean(imagePreview.value);
+  if (!useSelectedFile(image)) return;
+  ElMessage.success(replacing ? "已更换商品图片，其余内容保持不变" : "已添加商品图片");
 }
 
 async function loadPriceReference() {
@@ -140,7 +202,7 @@ async function loadPriceReference() {
     const response = await apiGetPriceReference({ category: form.category });
     priceReference.value = response.data.data;
   } catch (error) {
-    ElMessage.error(error.message || "价格参考获取失败");
+    priceReference.value = null;
   } finally {
     loadingPrice.value = false;
   }
@@ -155,13 +217,25 @@ async function submitForm() {
   }
   submitting.value = true;
   try {
-    await apiPublishProduct({
+    let imageUrl = savedImageUrl.value;
+    if (selectedImage.value) {
+      const uploaded = await apiUploadProductImage(selectedImage.value);
+      imageUrl = uploaded.data.data.image_url;
+    }
+    const payload = {
       ...form,
       price: Number(form.price),
+      image_url: imageUrl || undefined,
       ai_category: aiTags.value.category || undefined,
       ai_condition: aiTags.value.condition || undefined
-    });
-    ElMessage.success("商品已提交审核");
+    };
+    if (editingId.value) {
+      await apiEditProduct(editingId.value, payload);
+      ElMessage.success("商品已更新");
+    } else {
+      await apiPublishProduct(payload);
+      ElMessage.success("商品已提交审核");
+    }
     router.push("/user-center");
   } catch (error) {
     ElMessage.error(error.message || "商品提交失败");
@@ -194,7 +268,10 @@ async function submitForm() {
 .recognition-tools { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
 .recognition-tools :deep(.el-button) { min-height: 42px; padding: 0 20px; font-size: 14px; }
 .recognition-tools span { color: var(--text-secondary); font-size: 13px; }
-.image-preview { display: block; max-width: 240px; max-height: 190px; object-fit: contain; margin: 0 0 18px; border-radius: 8px; }
+.image-placeholder { display: grid; width: 100%; max-width: 420px; gap: 6px; margin: 0 0 14px; padding: 28px 22px; text-align: left; border: 1px dashed color-mix(in srgb, var(--primary-color) 45%, var(--border-color)); border-radius: 10px; background: var(--bg-card); cursor: pointer; }
+.image-placeholder strong { color: var(--text-primary); font-size: 16px; }
+.image-placeholder span { color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
+.image-preview { display: block; max-width: 240px; max-height: 190px; object-fit: contain; margin: 0 0 14px; border-radius: 8px; }
 .two-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .two-columns :deep(.el-select) { width: 100%; }
 .form-section :deep(.el-form-item__label) { color: var(--text-primary); font-size: 14px; font-weight: 600; }

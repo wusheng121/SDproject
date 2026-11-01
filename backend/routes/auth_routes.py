@@ -88,18 +88,24 @@ def register():
     if phone and User.query.filter_by(phone_hash=hash_phone(phone)).first():
         return api_error("AUTH_PHONE_EXISTS", "手机号已被使用", 409)
 
+    role = (payload.get("login_role") or "normal_user").strip()
+    if role not in {"normal_user", "admin"}:
+        return api_error("VALIDATION_ERROR", "注册只能选择普通用户或管理员", 422)
+
     user = User(
         username=username,
         email=normalized_email,
         email_normalized=normalized_email,
         password_hash=hash_password(password),
-        user_type="normal_user",
+        user_type=role,
         phone_ciphertext=encrypt_phone(phone),
         phone_hash=hash_phone(phone),
     )
     db.session.add(user)
     db.session.flush()
-    assign_role(user, "normal_user")
+    assign_role(user, role)
+    if role == "admin":
+        assign_role(user, "normal_user")
 
     raw_token = opaque_token()
     db.session.add(

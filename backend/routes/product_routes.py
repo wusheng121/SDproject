@@ -4,10 +4,11 @@ from sqlalchemy import func, or_
 
 from auth import current_user, login_required
 from extensions import db
-from models import Category, Product, ProductCategory, UserBehavior
+from models import BehaviorEvent, Category, Product, ProductCategory, UserBehavior
 from services.cache_store import read_through
 from services.listing_vision import ListingVisionError, recognize_listing
 from services.market_signals import price_reference as deal_price_reference
+from services.nl_filter import parse_nl
 from utils.response import err, ok
 
 CONDITION_RANKS = {
@@ -310,16 +311,123 @@ def list_categories():
 
 @product_bp.post("/ai/recognize")
 def recognize_product_image():
-    if not request.files.get("image"):
+    """逛一逛拍照找同类。图片交给 DeepSeek，页面再按识别出的品类搜索。"""
+    image = request.files.get("image")
+    if image is None:
         return err("请先选择一张商品图片", code=40001, http_status=400)
-    result = {
-        "name": "二手商品",
-        "brand": "",
-        "category": "数码产品",
-        "condition": "九成新",
-        "keywords": ["数码产品"],
-    }
-    return ok({"recognition": result, "mock": True})
+    try:
+        result = recognize_listing(image.read(4 * 1024 * 1024 + 1), image.mimetype or "")
+    except ListingVisionError as exc:
+        return err(str(exc), code=40002, http_status=422)
+    result = dict(result)
+    result["keywords"] = [result["category"]]
+    return ok({"recognition": result, "mock": False})
+
+
+@product_bp.post("/ai/filter/nl")
+def filter_by_sentence():
+    """POST /api/ai/filter/nl  body: {"text": "300元以内九成新手机"}"""
+    payload = request.get_json(silent=True) or {}
+    text = str(payload.get("text") or "").strip()
+    if not text:
+        return err("请输入要筛选的一句话", code=40001, http_status=400)
+    names = [row.name for row in Category.query.order_by(Category.name.asc()).all()]
+    slots = parse_nl(text, names)
+    query = Product.query.filter(Product.status == "approved")
+    if slots["keyword"]:
+        query = query.filter(Product.name.ilike(f"%{slots['keyword']}%"))
+    if slots["category"]:
+        query = (
+            query.join(ProductCategory, ProductCategory.product_id == Product.id)
+            .join(Category, Category.id == ProductCategory.category_id)
+            .filter(Category.name == slots["category"])
+        )
+    if slots["min_condition"]:
+        query = _condition_filter(query, slots["min_condition"])
+    if slots["min_price"] is not None:
+        query = query.filter(Product.price >= float(slots["min_price"]))
+    if slots["max_price"] is not None:
+        query = query.filter(Product.price <= float(slots["max_price"]))
+    products = query.distinct().limit(50).all()
+    user = current_user()
+    products, personalized = _rank_for_user(products, user)
+    items = []
+    for product in products:
+        categories = [link.category.name for link in product.categories if link.category]
+        items.append({
+            "id": product.id,
+            "name": product.name,
+            "price": product.price,
+            "condition": product.condition,
+            "image_url": product.image_url,
+            "categories": categories,
+        })
+    parts = []
+    if slots["category"]:
+        parts.append(slots["category"])
+    if slots["min_condition"]:
+        parts.append(slots["min_condition"] + "及以上")
+    if slots["max_price"] is not None:
+        parts.append(f"{slots['max_price']:g}元以内")
+    if slots["min_price"] is not None:
+        parts.append(f"{slots['min_price']:g}元以上")
+    message = "已按「" + "、".join(parts) + "」筛选" if parts else "没有识别出品类或价格，已按原话里的关键词查找"
+    if personalized:
+        message += "，并按你的兴趣和行为调整了顺序"
+    return ok({
+        "filters": slots,
+        "items": items,
+        "total": len(items),
+        "personalized": personalized,
+        "message": message,
+    })
+
+
+def _rank_for_user(products, user):
+    if user is None or len(products) < 2:
+        return products, False
+    preferred = set(user.get_preferred_categories_list())
+    weights = {}
+    rows = (
+        db.session.query(Category.name, BehaviorEvent.behavior_type)
+        .join(ProductCategory, ProductCategory.product_id == BehaviorEvent.product_id)
+        .join(Category, Category.id == ProductCategory.category_id)
+        .filter(BehaviorEvent.user_id == user.id)
+        .all()
+    )
+    table = {"view": 1, "favorite": 3, "add_cart": 4, "order": 5, "review": 2}
+    for name, kind in rows:
+        weights[name] = weights.get(name, 0) + table.get(kind, 0)
+    if not preferred and not weights:
+        return products, False
+
+    def score(product):
+        names = [link.category.name for link in product.categories if link.category]
+        return sum((70 if name in preferred else 0) + weights.get(name, 0) * 3 for name in names)
+
+    return sorted(products, key=score, reverse=True), True
+
+
+@product_bp.post("/ai/recognize-query")
+def recognize_query():
+    """Agent 只读识图。识别结果不写入商品。"""
+    import base64
+
+    payload = request.get_json(silent=True) or {}
+    raw = str(payload.get("image_base64") or "")
+    if "," in raw:
+        raw = raw.split(",", 1)[1]
+    if not raw.strip():
+        return err("请在 image_base64 提供图片", code=40001, http_status=400)
+    try:
+        image = base64.b64decode(raw, validate=True)
+    except Exception:
+        return err("图片内容无法解析", code=40001, http_status=400)
+    try:
+        result = recognize_listing(image, str(payload.get("mime") or "image/jpeg"))
+    except ListingVisionError as exc:
+        return err(str(exc), code=40002, http_status=422)
+    return ok({"recognition": result, "read_only": True})
 
 
 @product_bp.post("/ai/listing-recognize")

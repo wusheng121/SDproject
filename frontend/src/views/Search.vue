@@ -14,6 +14,7 @@
           <el-button class="image-search-button" plain :loading="recognizing" @click="imageInput?.click()">拍照识物找同类</el-button>
         </div>
         <p v-if="recognizedHint" class="assist-hint">{{ recognizedHint }}</p>
+        <p v-else-if="personalized" class="assist-hint">已按你的兴趣和行为调整顺序</p>
         <div class="filter-row">
           <el-select v-model="form.category" clearable filterable placeholder="全部品类" @change="onSearch">
             <el-option v-for="category in categories" :key="category" :label="category" :value="category" />
@@ -45,7 +46,7 @@ import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import ProductCard from "../components/ProductCard.vue";
-import { apiListCategories, apiListProducts, apiRecognizeProduct, apiSearchProducts } from "../api/products";
+import { apiFilterNl, apiListCategories, apiListProducts, apiRecognizeProduct, apiSearchProducts } from "../api/products";
 
 const router = useRouter();
 const route = useRoute();
@@ -58,6 +59,7 @@ const pageSize = 20;
 const imageInput = ref(null);
 const recognizing = ref(false);
 const recognizedHint = ref("");
+const personalized = ref(false);
 const conditions = [
   { label: "全新", value: "全新" },
   { label: "九成新及以上", value: "九成新" },
@@ -76,9 +78,12 @@ async function recognizeForSearch(event) {
     const response = await apiRecognizeProduct(image);
     const recognition = response.data.data.recognition;
     form.category = categories.value.includes(recognition.category) ? recognition.category : "";
-    form.keyword = recognition.name && recognition.name !== "二手商品" ? recognition.name : recognition.keywords?.[0] || "";
-    recognizedHint.value = `识别到${recognition.category}，可编辑关键词或品类后搜索`;
-    onSearch();
+    form.keyword = "";
+    page.value = 1;
+    await loadResults();
+    recognizedHint.value = form.category
+      ? `识别到${recognition.name}，已按「${form.category}」查找同类`
+      : `识别到${recognition.name}，商品库里没有对应品类`;
   } catch (error) {
     ElMessage.error(error.message || "图片识别失败");
   } finally {
@@ -95,23 +100,50 @@ async function loadCategories() {
   }
 }
 
+function looksNatural(text) {
+  return /元|成新|以内|以上|\d\s*[-~到至]\s*\d/.test(text);
+}
+
 async function loadResults() {
   loading.value = true;
   try {
     let response;
-    if (form.keyword.trim()) {
-      response = await apiSearchProducts({ q: form.keyword.trim(), category: form.category || undefined, min_condition: form.min_condition || undefined, min_price: form.min_price || undefined, max_price: form.max_price || undefined, sort: form.sort });
+    const sentence = form.keyword.trim();
+    if (looksNatural(sentence)) {
+      response = await apiFilterNl(sentence);
+      const data = response.data.code === 0 ? response.data.data || {} : {};
+      const filters = data.filters || {};
+      if (filters.category) form.category = filters.category;
+      if (filters.min_condition) form.min_condition = filters.min_condition;
+      if (filters.max_price != null) form.max_price = String(filters.max_price);
+      if (filters.min_price != null) form.min_price = String(filters.min_price);
+      results.value = data.items || [];
+      total.value = data.total || 0;
+      personalized.value = Boolean(data.personalized);
+      recognizedHint.value = data.message || "已按这句话筛选";
+      form.keyword = filters.keyword || "";
+    } else if (sentence) {
+      response = await apiSearchProducts({ q: sentence, category: form.category || undefined, min_condition: form.min_condition || undefined, min_price: form.min_price || undefined, max_price: form.max_price || undefined, sort: form.sort });
       const items = response.data.code === 0 ? response.data.data.items || [] : [];
       results.value = items.slice((page.value - 1) * pageSize, page.value * pageSize);
       total.value = response.data.data.total || 0;
+      personalized.value = Boolean(response.data.data?.personalized);
+      recognizedHint.value = response.data.data?.search_engine === "elasticsearch" ? "关键词由 Elasticsearch 检索" : "";
     } else {
+      recognizedHint.value = "";
+      personalized.value = false;
       response = await apiListProducts({ page: page.value, page_size: pageSize, category: form.category || undefined, min_condition: form.min_condition || undefined, min_price: form.min_price || undefined, max_price: form.max_price || undefined, sort: form.sort });
       if (response.data.code === 0) {
         results.value = response.data.data.items || [];
         total.value = response.data.data.total || 0;
       }
     }
-    router.replace({ query: { ...route.query, ...(form.keyword ? { q: form.keyword } : {}), ...(form.category ? { category: form.category } : {}) } });
+    const query = { ...route.query };
+    if (form.keyword) query.q = form.keyword;
+    else delete query.q;
+    if (form.category) query.category = form.category;
+    else delete query.category;
+    router.replace({ query });
   } catch (error) {
     console.error("搜索失败:", error);
     ElMessage.error("搜索失败，请重试");

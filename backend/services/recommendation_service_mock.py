@@ -1,10 +1,12 @@
 from collections import Counter
+from datetime import datetime, timedelta
 
 from flask import Blueprint, request
 
 from auth import login_required
 from extensions import db
-from models import Category, Product, ProductCategory
+from models import Category, Order, OrderItem, Product, ProductCategory, User
+from services.als_recommender import als_predict
 from services.behavior_service import BEHAVIOR_WEIGHTS, recent_behavior_rows
 from services.market_signals import recent_behavior_counts
 from utils.response import api_error, api_ok
@@ -15,11 +17,11 @@ STAGE_LABELS = {
     "A": "全局热门",
     "B": "兴趣内容推荐",
     "C": "内容与行为轻量混合",
-    "D": "协同行为推荐",
+    "D": "ALS矩阵分解 + 内容推荐",
 }
 
 
-def _recommend(user_id, categories, behavior_count, limit, offset, forced_stage=None):
+def _recommend(user_id, categories, behavior_count, limit, offset, forced_stage=None, holdout_product_id=None):
     categories = list(dict.fromkeys(str(value).strip() for value in categories if str(value).strip()))
     history = recent_behavior_rows(user_id)
     actual_behavior_count = len(history)
@@ -47,6 +49,8 @@ def _recommend(user_id, categories, behavior_count, limit, offset, forced_stage=
 
     popularity = recent_behavior_counts()
     seen_ids = {row.product_id for row in history}
+    if holdout_product_id is not None:
+        seen_ids.discard(holdout_product_id)
     products = Product.query.filter_by(status="approved").all()
     user_category_scores = Counter()
     for event in history:
@@ -56,6 +60,7 @@ def _recommend(user_id, categories, behavior_count, limit, offset, forced_stage=
         user_category_scores.update({name: weight for name in category_by_product.get(event.product_id, [])})
 
     preferred = set(categories)
+    als_scores = _als_scores(user_id, [product.id for product in products], holdout_product_id) if stage == "D" else {}
     scored = []
     for product in products:
         product_categories = category_by_product.get(product.id, [])
@@ -81,11 +86,19 @@ def _recommend(user_id, categories, behavior_count, limit, offset, forced_stage=
             score = preference_match * 70 + behavior_match * 30 + popularity_score + ai_bonus
             reason = "兴趣偏好与近7天行为共同匹配" if behavior_match else "根据兴趣偏好推荐"
         else:
-            score = behavior_match * 100 + preference_match * 10 + popularity_score + ai_bonus
-            reason = "与你近7天互动过的同类商品相似" if behavior_match else "协同行为热度补充"
+            als_score = als_scores.get(product.id, 0.0)
+            content_score = min(behavior_match / 20, 1) * 0.7 + min(preference_match, 1) * 0.3
+            if popularity_score == 0 and (preference_match or behavior_match):
+                content_score = min(content_score + 0.2, 1)
+            score = als_score * 60 + content_score * 40 + ai_bonus
+            reason = "ALS矩阵分解与内容特征混合" if als_scores else "行为不足以降解为内容推荐"
         if ai_bonus and preference_match:
             reason = f"{reason}，识图标签补充"
 
+        created = product.created_at or datetime.utcnow()
+        if (datetime.utcnow() - created).days <= 7 and popularity_score < 3:
+            score += 8
+            reason = f"{reason}，新商品额外曝光"
         scored.append((score, popularity_score, product.created_at, product, reason, product_categories))
 
     scored.sort(key=lambda item: (item[0], item[1], item[2]), reverse=True)
@@ -116,8 +129,27 @@ def _recommend(user_id, categories, behavior_count, limit, offset, forced_stage=
         "offset": offset,
         "limit": limit,
         "excluded_seen_products": len(seen_ids),
-        "message": f"{STAGE_LABELS[stage]}：{len(items)} 件商品，近7天行为与兴趣偏好参与排序。",
+        "message": f"{STAGE_LABELS[stage]}：{len(items)} 件商品。",
     }
+
+
+def _als_scores(user_id: int, candidates: list[int], skip_product: int | None = None) -> dict[int, float]:
+    from models import BehaviorEvent
+
+    weights = dict(BEHAVIOR_WEIGHTS)
+    weights.setdefault("order", 5)
+    ratings: dict[tuple[int, int], float] = {}
+    for event in BehaviorEvent.query.all():
+        if skip_product is not None and event.user_id == user_id and event.product_id == skip_product:
+            continue
+        weight = weights.get(event.behavior_type, 0)
+        if weight <= 0:
+            continue
+        key = (event.user_id, event.product_id)
+        ratings[key] = max(ratings.get(key, 0), float(weight))
+    if sum(1 for user, _ in ratings if user == user_id) < 1:
+        return {}
+    return als_predict(ratings, user_id, candidates)
 
 
 @recommendation_bp.get("/recommendations")
@@ -152,6 +184,102 @@ def preview_recommendations(user):
     if forced_stage and forced_stage not in STAGE_LABELS:
         return api_error("VALIDATION_ERROR", "stage 必须为 A、B、C 或 D", 422)
     return api_ok(_recommend(user.id, categories, behavior_count, limit, offset, forced_stage))
+
+
+@recommendation_bp.post("/recommendations/internal")
+def internal_recommendations():
+    from flask import current_app
+
+    if request.headers.get("X-Internal-Token") != current_app.config["SECRET_KEY"]:
+        return api_error("AUTH_FORBIDDEN", "内部推荐接口拒绝访问", 403)
+    payload = request.get_json(silent=True) or {}
+    try:
+        user_id = int(payload.get("user_id"))
+        limit = min(max(int(payload.get("limit", 6)), 1), 24)
+    except (TypeError, ValueError):
+        return api_error("VALIDATION_ERROR", "user_id 无效", 422)
+    from models import User
+
+    user = db.session.get(User, user_id)
+    if user is None:
+        return api_error("NOT_FOUND", "用户不存在", 404)
+    categories = user.get_preferred_categories_list()
+    behavior_count = len(recent_behavior_rows(user.id))
+    result = _recommend(user.id, categories, behavior_count, limit, 0)
+    result["behavior_count"] = behavior_count
+    return api_ok(result)
+
+
+@recommendation_bp.get("/recommendations/quality")
+@login_required
+def recommendation_quality(user):
+    return api_ok(_quality(user))
+
+
+def _quality(user):
+    approved = Product.query.filter_by(status="approved").all()
+    approved_ids = {product.id for product in approved}
+    hits = 0
+    evaluated = 0
+    covered = set()
+    diversity_scores = []
+    for person in User.query.all():
+        from models import BehaviorEvent
+
+        events = (
+            BehaviorEvent.query.filter_by(user_id=person.id)
+            .order_by(BehaviorEvent.created_at.desc(), BehaviorEvent.id.desc())
+            .all()
+        )
+        if len(events) < 2:
+            continue
+        holdout = events[0].product_id
+        result = _recommend(
+            person.id,
+            person.get_preferred_categories_list(),
+            max(len(events) - 1, 0),
+            6,
+            0,
+            holdout_product_id=holdout,
+        )
+        ids = [item["id"] for item in result["items"]]
+        covered.update(item_id for item_id in ids if item_id in approved_ids)
+        evaluated += 1
+        if holdout in ids:
+            hits += 1
+        names = [name for item in result["items"] for name in item.get("categories") or []]
+        if result["items"]:
+            diversity_scores.append(len(set(names)) / len(result["items"]))
+
+    week_ago = datetime.utcnow() - timedelta(days=7)
+    new_ids = [product.id for product in approved if product.created_at and product.created_at >= week_ago]
+    from models import BehaviorEvent
+
+    total_views = BehaviorEvent.query.filter_by(behavior_type="view").count()
+    new_views = 0
+    new_orders = 0
+    if new_ids:
+        new_views = BehaviorEvent.query.filter(
+            BehaviorEvent.behavior_type == "view",
+            BehaviorEvent.product_id.in_(new_ids),
+        ).count()
+        new_orders = (
+            db.session.query(OrderItem.id)
+            .join(Order, Order.id == OrderItem.order_id)
+            .filter(Order.status == "paid", OrderItem.product_id.in_(new_ids))
+            .count()
+        )
+    return {
+        "precision": round(hits / (evaluated * 6), 4) if evaluated else 0,
+        "recall": round(hits / evaluated, 4) if evaluated else 0,
+        "coverage": round(len(covered) / len(approved_ids), 4) if approved_ids else 0,
+        "diversity": round(sum(diversity_scores) / len(diversity_scores), 4) if diversity_scores else 0,
+        "sample_users": evaluated,
+        "new_product_count": len(new_ids),
+        "click_rate": round(new_views / total_views, 4) if total_views else 0,
+        "conversion_rate": round(new_orders / new_views, 4) if new_views else 0,
+        "message": "准确率和召回率按留一法计算。点击率是新商品浏览占全部浏览的比例，转化率是新商品成交除以新商品浏览。",
+    }
 
 
 @recommendation_bp.get("/recommendations/similar/<int:product_id>")

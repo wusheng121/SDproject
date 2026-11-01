@@ -178,6 +178,70 @@ def _slots(row: AgentDialogue) -> dict:
     return data if isinstance(data, dict) else {}
 
 
+def _when(value) -> str | None:
+    if value is None:
+        return None
+    return value.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _preview(row: AgentDialogue) -> str:
+    for item in reversed(_messages(row)):
+        if item.get("role") != "user":
+            continue
+        text = (item.get("content") or "").strip()
+        if not text and item.get("filename"):
+            text = f"图片 {item['filename']}"
+        if text:
+            return text[:40]
+    return "空对话"
+
+
+def public_messages(row: AgentDialogue) -> list:
+    messages = []
+    for item in _messages(row):
+        role = item.get("role")
+        if role not in {"user", "assistant"}:
+            continue
+        message = {"role": role, "content": item.get("content") or ""}
+        if item.get("filename"):
+            message["filename"] = item["filename"]
+        if item.get("engine"):
+            message["engine"] = item["engine"]
+        if item.get("items"):
+            message["items"] = item["items"]
+        messages.append(message)
+    return messages
+
+
+def dialogue_summaries(user) -> list:
+    rows = (
+        AgentDialogue.query.filter_by(user_id=user.id)
+        .order_by(AgentDialogue.updated_at.desc(), AgentDialogue.created_at.desc())
+        .limit(30)
+        .all()
+    )
+    return [
+        {
+            "id": row.id,
+            "preview": _preview(row),
+            "updated_at": _when(row.updated_at or row.created_at),
+        }
+        for row in rows
+    ]
+
+
+def dialogue_detail(user, session_id: str) -> dict | None:
+    row = AgentDialogue.query.filter_by(id=session_id, user_id=user.id).first()
+    if row is None:
+        return None
+    return {
+        "id": row.id,
+        "preview": _preview(row),
+        "updated_at": _when(row.updated_at or row.created_at),
+        "messages": public_messages(row),
+    }
+
+
 def _messages(row: AgentDialogue) -> list:
     try:
         data = json.loads(row.messages_json or "[]")
@@ -417,12 +481,27 @@ def converse(
         slots["last_prices"] = [float(item.price) for item in items]
         slots.pop("sort", None)
     history.append({"role": "user", "content": text, "filename": filename or None})
-    history.append({"role": "assistant", "content": reply, "skill": skill, "engine": engine})
+    history.append({
+        "role": "assistant",
+        "content": reply,
+        "skill": skill,
+        "engine": engine,
+        "items": [
+            {
+                "id": item.id,
+                "name": item.name,
+                "condition": item.condition,
+                "price": float(item.price),
+            }
+            for item in items
+        ],
+    })
     row.slots_json = json.dumps(slots, ensure_ascii=False)
     row.messages_json = json.dumps(history[-20:], ensure_ascii=False)
     return {
         "row": row,
         "session_id": row.id,
+        "message": text,
         "reply": reply,
         "engine": engine,
         "skill": skill,

@@ -53,6 +53,12 @@ Thumbs.db
 
 
 
+# ---- Uploaded product photos ----
+server/data/uploads/
+
+# ---- Java build output ----
+server/target/
+
 # ---- Local secrets / test artifacts ----
 .env
 .env.*

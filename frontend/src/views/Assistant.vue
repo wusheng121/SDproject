@@ -5,6 +5,21 @@
       <p class="page-subtitle">上传照片是来找已经在售的商品。DeepSeek 看图后按品类查询，不会发布商品，也不能删除、改价或支付。</p>
     </div>
 
+    <div class="assistant-layout">
+    <aside class="history">
+      <el-button class="new-chat" @click="startNew">新对话</el-button>
+      <button
+        v-for="item in sessions"
+        :key="item.id"
+        type="button"
+        :class="['history-item', { active: item.id === sessionId }]"
+        @click="openSession(item.id)"
+      >
+        <span>{{ item.preview }}</span>
+        <small>{{ item.updated_at }}</small>
+      </button>
+      <p v-if="sessions.length === 0" class="hint">还没有历史对话</p>
+    </aside>
     <el-card class="chat-card">
       <div class="prompts">
         <span>可以依次点这几句：</span>
@@ -45,18 +60,20 @@
       <p v-else-if="imageDataUrl" class="file-name">识图寻商品：将把这张照片发给 DeepSeek，按品类查找在售商品：{{ filename }}</p>
       <img v-if="imageDataUrl" :src="imageDataUrl" class="preview" alt="待发送的商品照片" />
     </el-card>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 
-import { apiAssistantChat } from "../api/assistant";
+import { apiAssistantChat, apiAssistantSession, apiAssistantSessions } from "../api/assistant";
 
 const router = useRouter();
 const prompts = ["平板", "只要九成新", "便宜一点", "有什么推荐", "帮我删掉这个商品"];
 const messages = ref([]);
+const sessions = ref([]);
 const draft = ref("");
 const sessionId = ref("");
 const filename = ref("");
@@ -65,6 +82,36 @@ const fileError = ref("");
 const sending = ref(false);
 const fileInput = ref(null);
 const maxImageBytes = 4 * 1024 * 1024;
+
+function showMessages(items) {
+  messages.value = (items || []).map((item) => ({
+    role: item.role,
+    content: item.content || (item.filename ? `上传了 ${item.filename}` : ""),
+    engine: item.engine,
+    items: item.items || []
+  }));
+}
+
+async function loadSessions() {
+  const response = await apiAssistantSessions();
+  sessions.value = response.data.data || [];
+}
+
+async function openSession(id) {
+  const response = await apiAssistantSession(id);
+  const data = response.data.data;
+  sessionId.value = data.id;
+  showMessages(data.messages);
+}
+
+function startNew() {
+  sessionId.value = "";
+  messages.value = [];
+  draft.value = "";
+  filename.value = "";
+  imageDataUrl.value = "";
+  fileError.value = "";
+}
 
 function openProduct(product) {
   router.push(`/product/${product.id}`);
@@ -118,10 +165,18 @@ async function sendText(text) {
     imageDataUrl.value = "";
     fileError.value = "";
     if (fileInput.value) fileInput.value.value = "";
+    await loadSessions();
   } finally {
     sending.value = false;
   }
 }
+
+onMounted(async () => {
+  await loadSessions();
+  if (sessions.value.length > 0) {
+    await openSession(sessions.value[0].id);
+  }
+});
 </script>
 
 <style scoped>
@@ -145,8 +200,59 @@ async function sendText(text) {
   font-size: 14px;
 }
 
-.chat-card {
+.assistant-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 16px;
   margin-top: 16px;
+  align-items: start;
+}
+
+.history {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 640px;
+  overflow-y: auto;
+}
+
+.new-chat {
+  width: 100%;
+}
+
+.history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  text-align: left;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.history-item small {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.history-item.active {
+  border-color: var(--primary-color);
+  background: rgba(88, 101, 242, 0.12);
+}
+
+.chat-card {
+  margin-top: 0;
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .assistant-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 .prompts {

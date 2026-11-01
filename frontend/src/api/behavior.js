@@ -20,6 +20,10 @@ export function apiGetFavorites() {
   return http.get("/v1/users/me/favorites");
 }
 
+export function apiGetRecommendationQuality() {
+  return http.get("/recommendations/quality");
+}
+
 export function apiGetRecommendations(limit = 10, offset = 0) {
   return http.get("/recommendations", { params: { limit, offset } });
 }

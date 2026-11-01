@@ -66,7 +66,18 @@ def test_sample_search_filters_keyword_price_and_condition(client):
     assert keyword.get_json()["data"]["items"][0]["name"] == "iPhone 12 128G"
 
 
-def test_sample_browse_photo_recognition_stays_a_fixed_mock(client):
+def test_sample_browse_photo_recognition_uses_the_vision_result(client, monkeypatch):
+    monkeypatch.setattr(
+        "routes.product_routes.recognize_listing",
+        lambda image_bytes, mime: {
+            "name": "白色台灯",
+            "brand": "",
+            "category": "台灯",
+            "condition": "九成新",
+            "description": "一张白色台灯",
+            "source": "deepseek",
+        },
+    )
     response = client.post(
         "/api/ai/recognize",
         data={"image": (BytesIO(b"not-a-real-photo"), "汽车.jpg", "image/jpeg")},
@@ -74,8 +85,9 @@ def test_sample_browse_photo_recognition_stays_a_fixed_mock(client):
     )
     assert response.status_code == 200
     body = response.get_json()["data"]
-    assert body["mock"] is True
-    assert body["recognition"]["category"] == "数码产品"
+    assert body["mock"] is False
+    assert body["recognition"]["category"] == "台灯"
+    assert body["recognition"]["source"] == "deepseek"
 
 
 def test_sample_favorite_and_seven_day_behavior_reach_admin(client, app):

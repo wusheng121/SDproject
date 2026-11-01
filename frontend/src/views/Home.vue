@@ -36,7 +36,7 @@
 
     <section class="product-section recommendation-section">
       <div class="section-heading">
-        <div><p class="eyebrow">PERSONAL PICKS</p><h2>为你推荐</h2><p>{{ recommendationMeta.message || "登录后根据兴趣和浏览行为，为你挑选校园好物。" }}</p></div>
+        <div><p class="eyebrow">PERSONAL PICKS</p><h2>为你推荐</h2><p>{{ recommendationMeta.strategy_name ? `${recommendationMeta.strategy_name}，近 7 天行为 ${recommendationMeta.behavior_count || 0} 条。` : "登录后根据兴趣和浏览行为，为你挑选校园好物。" }}</p><p v-if="quality">准确率 {{ percent(quality.precision) }}，召回率 {{ percent(quality.recall) }}，覆盖率 {{ percent(quality.coverage) }}，多样性 {{ percent(quality.diversity) }}。新商品 {{ quality.new_product_count }} 件，点击率 {{ percent(quality.click_rate) }}，转化率 {{ percent(quality.conversion_rate) }}。</p></div>
         <div class="recommendation-actions">
           <button v-if="userStore.token" class="text-action" type="button" :disabled="recommendationLoading" @click="refreshRecommendations">{{ recommendationLoading ? "加载中..." : "换一批" }}</button>
           <button v-else class="text-action" type="button" @click="router.push('/login')">登录查看个性化推荐</button>
@@ -76,7 +76,7 @@ import { ElMessage } from "element-plus";
 
 import ProductCard from "../components/ProductCard.vue";
 import { apiListCategories, apiListProducts } from "../api/products";
-import { apiGetRecommendations } from "../api/behavior";
+import { apiGetRecommendationQuality, apiGetRecommendations } from "../api/behavior";
 import { useUserStore } from "../stores/user";
 
 const router = useRouter();
@@ -84,6 +84,7 @@ const userStore = useUserStore();
 const products = ref([]);
 const recommendations = ref([]);
 const recommendationMeta = ref({});
+const quality = ref(null);
 const recommendationOffset = ref(0);
 const recommendationLoading = ref(false);
 const categories = ref([]);
@@ -129,6 +130,10 @@ async function loadRecommendations(offset = 0) {
     recommendations.value = payload.items || [];
     recommendationMeta.value = payload;
     recommendationOffset.value = offset;
+    if (!quality.value) {
+      const metrics = await apiGetRecommendationQuality();
+      quality.value = metrics.data.data || null;
+    }
   } catch (error) {
     console.error("加载推荐失败:", error);
   } finally {
@@ -159,6 +164,10 @@ async function loadCategories() {
 
 function goToCategory(category) {
   router.push({ path: "/search", query: { category } });
+}
+
+function percent(value) {
+  return `${Math.round(Number(value || 0) * 1000) / 10}%`;
 }
 
 function openProduct(product) {

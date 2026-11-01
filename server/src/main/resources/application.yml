@@ -1,0 +1,47 @@
+server:
+  port: 8080
+  tomcat:
+    max-http-form-post-size: 8MB
+    max-swallow-size: 8MB
+
+spring:
+  servlet:
+    multipart:
+      enabled: false
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3307/campus_market?characterEncoding=UTF-8&serverTimezone=UTC
+    username: campus
+    password: campus
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  rabbitmq:
+    host: ${RABBITMQ_HOST:127.0.0.1}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        missing-queues-fatal: false
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1000
+
+campus:
+  data-url: http://127.0.0.1:5001
+  jwt-secret: ${SECRET_KEY:dev-only-change-me-0123456789abcdef}
+  jwt-issuer: ${JWT_ISSUER:campus-market}
+  jwt-audience: ${JWT_AUDIENCE:campus-market-web}
+  access-ttl-seconds: ${JWT_ACCESS_TTL_SECONDS:900}
+  bcrypt-cost: ${BCRYPT_COST:12}
+  phone-enc-key: ${PHONE_ENC_KEY:}
+  phone-hash-key: ${PHONE_HASH_KEY:}
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  smtp-host: ${SMTP_HOST:}
+  smtp-port: ${SMTP_PORT:1025}
+  mail-from: ${MAIL_FROM:no-reply@campus-market.local}
+  redis-url: ${REDIS_URL:redis://127.0.0.1:6379/0}
+  elasticsearch-url: ${ELASTICSEARCH_URL:http://127.0.0.1:9200}
+  cache-local-ttl-seconds: ${CACHE_LOCAL_TTL_SECONDS:20}
+  cache-redis-ttl-seconds: ${CACHE_REDIS_TTL_SECONDS:120}
+  cache-local-max-items: ${CACHE_LOCAL_MAX_ITEMS:256}

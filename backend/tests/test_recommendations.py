@@ -88,4 +88,7 @@ def test_actual_behavior_count_controls_stage(client, app):
     response = client.get("/api/recommendations?limit=6", headers=headers)
     payload = response.get_json()["data"]
     assert payload["strategy"] == "D"
+    assert payload["strategy_name"] == "ALS矩阵分解 + 内容推荐"
     assert payload["recorded_behavior_count"] == 10
+    assert payload["items"]
+    assert any("ALS" in item["reason"] for item in payload["items"])

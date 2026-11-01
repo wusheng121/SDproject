@@ -11,14 +11,14 @@ from werkzeug.exceptions import HTTPException
 
 from config import get_config
 from extensions import cors, db, limiter, migrate
-from routes import register_blueprints
+from routes import register_blueprints, register_data_blueprints
 from utils.logging import configure_logging
 from utils.response import api_error
 
 logger = logging.getLogger(__name__)
 
 
-def create_app(config_name: str | None = None):
+def create_app(config_name: str | None = None, *, role: str = "full"):
     load_dotenv()
     app = Flask(__name__)
     app.config.from_object(get_config(config_name))
@@ -79,7 +79,10 @@ def create_app(config_name: str | None = None):
         remote_ttl=int(app.config.get("CACHE_REDIS_TTL_SECONDS", 120)),
         max_items=int(app.config.get("CACHE_LOCAL_MAX_ITEMS", 256)),
     )
-    register_blueprints(app)
+    if role == "data":
+        register_data_blueprints(app)
+    else:
+        register_blueprints(app)
     _register_request_hooks(app)
     _register_error_handlers(app)
     _register_health(app)

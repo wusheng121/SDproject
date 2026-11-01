@@ -4,6 +4,7 @@ from flask import current_app
 
 from extensions import db
 from models import (
+    ApiKey,
     Category,
     Permission,
     Product,
@@ -13,7 +14,7 @@ from models import (
     User,
     UserRole,
 )
-from utils.security import hash_password
+from utils.security import hash_password, hash_token
 
 PERMISSIONS = [
     ("product:view", "查看商品"),
@@ -177,7 +178,7 @@ def seed_categories():
     db.session.commit()
 
 
-def _upsert_user(username, email, password, user_type, verified=True):
+def _upsert_user(username, email, password, user_type, verified=True, extra_roles=()):
     email = email.lower()
     user = User.query.filter_by(username=username).first()
     if not user:
@@ -200,7 +201,18 @@ def _upsert_user(username, email, password, user_type, verified=True):
 def seed_users():
     _upsert_user("testuser", "test@example.com", "Test12345", "normal_user")
     _upsert_user("admin", "admin@example.com", "Admin12345", "admin")
-    _upsert_user("agent", "agent@example.com", "Agent12345", "agent_service")
+    agent = _upsert_user("agent", "agent@example.com", "Agent12345", "agent_service")
+    demo_key = "cmk_demo1.agent-readonly-demo"
+    if not ApiKey.query.filter_by(key_prefix="cmk_demo1").first():
+        db.session.add(
+            ApiKey(
+                user_id=agent.id,
+                name="course-demo",
+                key_prefix="cmk_demo1",
+                key_hash=hash_token(demo_key),
+                scopes="product:view,recommendation:query",
+            )
+        )
     db.session.commit()
 
 

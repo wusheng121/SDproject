@@ -21,3 +21,10 @@ def register_blueprints(app):
     app.register_blueprint(behavior_v1_bp)
     app.register_blueprint(trade_bp)
     app.register_blueprint(recommendation_bp)
+
+
+def register_data_blueprints(app):
+    """推荐、识图和购物助手。业务接口由 Java 负责，这里不再注册。"""
+    app.register_blueprint(assistant_bp)
+    app.register_blueprint(product_bp)
+    app.register_blueprint(recommendation_bp)
