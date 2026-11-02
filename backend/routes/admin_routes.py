@@ -53,7 +53,7 @@ def _sync_user_type(user: User):
 @permission_required("user:manage")
 def list_users(admin):
     page, page_size = _page_args()
-    q = User.query
+    q = User.query.filter(User.deleted_at.is_(None))
     keyword = (request.args.get("keyword") or "").strip()
     if keyword:
         q = q.filter(or_(User.username.ilike(f"%{keyword}%"), User.email.ilike(f"%{keyword}%")))
@@ -191,13 +191,14 @@ def _change_product_status(admin, product_id, action, new_status, reason=None):
         return api_error("NOT_FOUND", "商品不存在", 404)
     allowed = {
         "approve": {"pending", "rejected"},
-        "reject": {"pending", "approved"},
+        "reject": {"pending"},
         "offline": {"approved"},
     }[action]
     if product.status not in allowed:
         return api_error("CONFLICT", f"当前状态 {product.status} 不允许该操作", 409)
     before = product_public(product, include_description=True)
     product.status = new_status
+    product.reject_reason = reason if new_status == "rejected" else None
     log_operation(
         admin,
         f"product.{action}",
@@ -264,8 +265,8 @@ def list_logs(admin):
 @admin_bp.get("/stats")
 @permission_required("admin:log")
 def get_stats(admin):
-    total_users = User.query.count()
-    active_users = User.query.filter_by(is_active=True).count()
+    total_users = User.query.filter(User.deleted_at.is_(None)).count()
+    active_users = User.query.filter(User.is_active.is_(True), User.deleted_at.is_(None)).count()
     total_products = Product.query.count()
     pending_products = Product.query.filter_by(status="pending").count()
     approved_products = Product.query.filter_by(status="approved").count()

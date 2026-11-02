@@ -18,8 +18,7 @@ export const useUserStore = defineStore("user", {
   }),
   getters: {
     username: (state) => state.profile?.username || "",
-    isAdmin: (state) =>
-      state.profile?.user_type === "admin" || (state.profile?.roles || []).includes("admin"),
+    isAdmin: (state) => state.profile?.user_type === "admin",
     permissions: (state) => state.profile?.permissions || []
   },
   actions: {
@@ -28,10 +27,10 @@ export const useUserStore = defineStore("user", {
       this.token = token;
       this.profile = profile || this.profile;
     },
-    async login({ identifier, password, remember }) {
-      const resp = await apiLogin({ identifier, password, remember });
-      const payload = resp?.data?.data || {};
-      this.setSession(payload.access_token || "", payload.user || null);
+    async login(payload) {
+      const resp = await apiLogin(payload);
+      const data = resp?.data?.data || {};
+      this.setSession(data.access_token || "", data.user || null);
       return resp;
     },
     async bootstrap() {

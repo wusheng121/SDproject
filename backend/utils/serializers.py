@@ -43,6 +43,7 @@ def product_public(product, include_description: bool = False):
         "condition": product.condition,
         "image_url": product.image_url,
         "status": product.status,
+        "reject_reason": product.reject_reason or "",
         "categories": [pc.category.name for pc in product.categories if pc.category],
         "created_at": product.created_at.isoformat() if product.created_at else None,
     }

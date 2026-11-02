@@ -16,7 +16,7 @@
 
         <label class="field-label">模拟行为次数 <strong>{{ form.behavior_count }}</strong></label>
         <el-slider v-model="form.behavior_count" :min="0" :max="20" :marks="behaviorMarks" />
-        <div class="field-help">仅改变本次预览使用的阶段，不会写入或伪造用户行为记录。</div>
+        <div class="field-help">表示假装近 7 天有这么多次浏览、收藏或加购。0 次对应 B，1 到 9 次对应 C，10 次及以上对应 D。本次测试仍以上面选择的阶段为准，这个数字不会写入真实记录。</div>
 
         <el-button class="run-button" type="primary" :loading="loading" @click="runTest">运行推荐测试</el-button>
         <el-button class="reset-button" @click="loadSavedPreferences">载入我的真实偏好</el-button>
@@ -70,7 +70,7 @@ const stages = [
   { key: "C", name: "轻量混合", rule: "有偏好，1–9 次行为", description: "结合偏好品类与少量浏览、收藏等行为。" },
   { key: "D", name: "协同行为推荐", rule: "有偏好，≥10 次行为", description: "重点依据用户行为形成的品类兴趣排序。" }
 ];
-const behaviorMarks = { 0: "0", 1: "B→C", 9: "9", 10: "C→D", 20: "20" };
+const behaviorMarks = { 0: "0次", 10: "10次", 20: "20次" };
 const form = reactive({ stage: "B", categories: [], behavior_count: 0 });
 
 async function loadCategories() {
@@ -119,6 +119,8 @@ onMounted(loadCategories);
 .field-label strong { color: var(--primary-color); }
 .full-width { width: 100%; }
 .field-help { margin-top: 8px; color: var(--text-secondary); font-size: 11px; line-height: 1.65; }
+.control-panel :deep(.el-slider) { margin: 0 12px 28px; }
+.control-panel :deep(.el-slider__marks-text) { font-size: 11px; white-space: nowrap; }
 .run-button, .reset-button { width: 100%; margin: 18px 0 0; }
 .reset-button { margin-top: 8px; }
 .results-panel { display: flex; flex-direction: column; gap: 16px; min-width: 0; }

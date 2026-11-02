@@ -106,7 +106,7 @@
             <el-table-column label="操作" width="240" fixed="right">
               <template #default="{ row }">
                 <el-button v-if="row.status === 'pending' || row.status === 'rejected'" size="small" type="success" @click="approveProduct(row)">通过</el-button>
-                <el-button v-if="row.status === 'pending' || row.status === 'approved'" size="small" type="danger" plain @click="rejectProduct(row)">拒绝</el-button>
+                <el-button v-if="row.status === 'pending'" size="small" type="danger" plain @click="rejectProduct(row)">拒绝</el-button>
                 <el-button v-if="row.status === 'approved'" size="small" @click="offlineProduct(row)">下架</el-button>
               </template>
             </el-table-column>
@@ -116,16 +116,27 @@
 
         <el-tab-pane label="操作日志" name="logs">
           <div class="toolbar">
-            <el-input v-model="logFilters.action" placeholder="动作，如 user.ban" clearable style="width: 220px" @keyup.enter="loadLogs(1)" />
-            <el-input v-model="logFilters.resource_type" placeholder="资源类型" clearable style="width: 160px" @keyup.enter="loadLogs(1)" />
+            <el-select v-model="logFilters.action" placeholder="全部动作" clearable style="width: 220px" @change="loadLogs(1)">
+              <el-option v-for="item in logActions" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
+            <el-select v-model="logFilters.resource_type" placeholder="全部资源" clearable style="width: 180px" @change="loadLogs(1)">
+              <el-option v-for="item in logResourceTypes" :key="item.value" :label="item.label" :value="item.value" />
+            </el-select>
             <el-button type="primary" @click="loadLogs(1)">查询</el-button>
           </div>
           <el-table :data="logs" stripe v-loading="loading">
             <el-table-column prop="created_at" label="时间" width="180" />
             <el-table-column prop="actor" label="操作者" width="120" />
             <el-table-column prop="action" label="动作" min-width="150" />
+            <el-table-column label="内容" min-width="220">
+              <template #default="{ row }">
+                <span v-if="logPreview(row)">{{ logPreview(row) }}</span>
+                <el-button v-if="row.resource_type === 'agent_dialogue' && row.resource_id" link type="primary" @click="openDialogue(row)">查看对话</el-button>
+                <span v-else-if="!logPreview(row)">-</span>
+              </template>
+            </el-table-column>
             <el-table-column label="资源" min-width="140">
-              <template #default="{ row }">{{ row.resource_type || '-' }} / {{ row.resource_id || '-' }}</template>
+              <template #default="{ row }">{{ resourceLabel(row.resource_type) }} / {{ row.resource_id || '-' }}</template>
             </el-table-column>
             <el-table-column prop="ip" label="IP" width="140" />
             <el-table-column prop="trace_id" label="Trace ID" min-width="180" />
@@ -147,6 +158,17 @@
         </el-tab-pane>
       </el-tabs>
     </el-card>
+
+    <el-dialog v-model="dialogueVisible" title="购物助手对话" width="640px">
+      <p v-if="dialogue" class="dialogue-meta">{{ dialogue.username || '用户' }} · {{ dialogue.updated_at || '' }}</p>
+      <div v-if="dialogue" class="dialogue-thread">
+        <div v-for="(item, index) in dialogue.messages || []" :key="index" :class="['dialogue-line', item.role]">
+          <strong>{{ item.role === 'user' ? '用户' : '助手' }}</strong>
+          <p>{{ item.content || (item.filename ? `上传了 ${item.filename}` : '') }}</p>
+        </div>
+        <p v-if="!(dialogue.messages || []).length" class="dialogue-meta">这段对话没有内容</p>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -159,6 +181,7 @@ import { useRouter } from "vue-router";
 import {
   apiApproveProduct,
   apiBanUser,
+  apiGetAgentDialogue,
   apiGetLogs,
   apiGetProducts,
   apiGetStatistics,
@@ -188,11 +211,32 @@ const productPage = ref(1);
 const productPageSize = 20;
 const productFilters = reactive({ status: "" });
 
+const dialogueVisible = ref(false);
+const dialogue = ref(null);
 const logs = ref([]);
 const logTotal = ref(0);
 const logPage = ref(1);
 const logPageSize = 20;
 const logFilters = reactive({ action: "", resource_type: "" });
+const logActions = [
+  { value: "user.roles.update", label: "修改用户身份" },
+  { value: "user.ban", label: "封禁用户" },
+  { value: "user.unban", label: "解除封禁" },
+  { value: "product.approve", label: "通过商品" },
+  { value: "product.reject", label: "拒绝商品" },
+  { value: "product.offline", label: "下架商品" },
+  { value: "agent.dialogue.query", label: "购物助手查询" },
+  { value: "agent.dialogue.refuse", label: "购物助手拒绝" },
+  { value: "agent.products.query", label: "外部查询商品" },
+  { value: "agent.recommendations.query", label: "外部查询推荐" }
+];
+const logResourceTypes = [
+  { value: "user", label: "用户" },
+  { value: "product", label: "商品" },
+  { value: "agent_dialogue", label: "购物助手对话" },
+  { value: "recommendation", label: "推荐" },
+  { value: "skill", label: "外部技能" }
+];
 
 const stats = ref({
   users: { total: 0, active: 0 },
@@ -264,11 +308,36 @@ async function loadProducts(page = 1) {
   }
 }
 
+function resourceLabel(type) {
+  return logResourceTypes.find((item) => item.value === type)?.label || type || "-";
+}
+
+function logPreview(row) {
+  if (!row.after_json) return "";
+  try {
+    const data = typeof row.after_json === "string" ? JSON.parse(row.after_json) : row.after_json;
+    return [data.message, data.reply].filter(Boolean).join(" → ");
+  } catch {
+    return "";
+  }
+}
+
+async function openDialogue(row) {
+  const res = await apiGetAgentDialogue(row.resource_id);
+  dialogue.value = res.data.data;
+  dialogueVisible.value = true;
+}
+
 async function loadLogs(page = 1) {
   logPage.value = page;
   loading.value = true;
   try {
-    const res = await apiGetLogs({ ...logFilters, page, page_size: logPageSize });
+    const res = await apiGetLogs({
+      action: logFilters.action || undefined,
+      resource_type: logFilters.resource_type || undefined,
+      page,
+      page_size: logPageSize
+    });
     logs.value = res.data.data || [];
     logTotal.value = res.data.pagination?.total || 0;
   } finally {
@@ -293,8 +362,8 @@ function onTabChange(name) {
 }
 
 async function banUser(row) {
-  const { value } = await ElMessageBox.prompt("请输入封禁原因", "封禁用户", { inputPlaceholder: "原因" });
-  await apiBanUser(row.id, value || "管理员操作");
+  await ElMessageBox.confirm(`确认封禁 ${row.username}？封禁后该账号不能登录。`, "封禁用户");
+  await apiBanUser(row.id);
   ElMessage.success("已封禁");
   await loadUsers(userPage.value);
 }
@@ -306,11 +375,19 @@ async function unbanUser(row) {
   await loadUsers(userPage.value);
 }
 
-async function setAdmin(row, isAdmin) {
-  const roles = isAdmin ? ["admin"] : ["normal_user"];
-  await ElMessageBox.confirm(`确认将 ${row.username} 的角色改为 ${roles[0]}？`, "修改角色");
+async function setAdmin(row, makeAdmin) {
+  const roles = makeAdmin ? ["admin", "normal_user"] : ["normal_user"];
+  const label = makeAdmin ? "管理员" : "普通用户";
+  const extra = makeAdmin ? "登录时仍可以选择普通用户。" : "之后只能以普通用户登录。";
+  await ElMessageBox.confirm(`确认将 ${row.username} 改为${label}？${extra}`, "修改身份");
   await apiSetUserRoles(row.id, roles);
-  ElMessage.success("角色已更新");
+  if (row.id === userStore.profile?.id) {
+    ElMessage.success("身份已更新，请重新登录并选择身份");
+    await userStore.logout();
+    router.push("/login");
+    return;
+  }
+  ElMessage.success("身份已更新");
   await loadUsers(userPage.value);
 }
 
@@ -399,6 +476,32 @@ onMounted(async () => {
 .pager {
   margin-top: 16px;
   justify-content: flex-end;
+}
+.dialogue-meta {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+}
+.dialogue-thread {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.dialogue-line {
+  padding: 10px 12px;
+  border-radius: 10px;
+}
+.dialogue-line p {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+.dialogue-line.user {
+  background: rgba(88, 101, 242, 0.12);
+}
+.dialogue-line.assistant {
+  background: var(--bg-hover);
 }
 @media (max-width: 768px) {
   .admin-page {

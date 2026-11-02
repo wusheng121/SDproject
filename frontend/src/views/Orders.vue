@@ -24,8 +24,8 @@
             <div class="meta">¥{{ item.price }} × {{ item.quantity }}</div>
           </div>
           <div v-if="item.reviewed" class="reviewed">
-            <el-rate :model-value="item.review.score" disabled />
-            <span>{{ item.review.comment || "已评价" }}</span>
+            <el-rate :model-value="item.review?.score || 0" disabled />
+            <span>{{ item.review?.comment || "已评价" }}</span>
           </div>
           <el-button
             v-else-if="order.status === 'paid'"
@@ -133,8 +133,12 @@ function openReview(order, item) {
 }
 
 async function submitReview() {
-  if (!reviewScore.value) {
-    ElMessage.warning("请先打分");
+  if (!reviewScore.value || reviewScore.value < 1 || reviewScore.value > 5) {
+    ElMessage.warning("请先打 1 到 5 分");
+    return;
+  }
+  if (reviewComment.value.length > 500 || reviewComment.value.includes("<")) {
+    ElMessage.warning("评价最多 500 字，且不能包含 HTML 标签");
     return;
   }
   submitting.value = true;

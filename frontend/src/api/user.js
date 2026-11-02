@@ -1,13 +1,17 @@
 import http from "./http";
 
-export function apiRegister({ username, email, password, phone }) {
-  return http.post("/v1/auth/register", { username, email, password, phone });
+export function apiCaptcha() {
+  return http.get("/v1/auth/captcha");
 }
 
-export function apiLogin({ identifier, password, remember }) {
+export function apiRegister({ username, email, password, phone, captcha_id, captcha_code, login_role }) {
+  return http.post("/v1/auth/register", { username, email, password, phone, captcha_id, captcha_code, login_role });
+}
+
+export function apiLogin({ identifier, password, remember, captcha_id, captcha_code, login_role }) {
   return http.post(
     "/v1/auth/login",
-    { identifier, password, remember },
+    { identifier, password, remember, captcha_id, captcha_code, login_role },
     { skipAuthRedirect: true }
   );
 }
@@ -26,6 +30,10 @@ export function apiProfile() {
 
 export function apiUpdateProfile(data) {
   return http.patch("/v1/users/me", data);
+}
+
+export function apiCloseAccount(password) {
+  return http.post("/v1/users/me/close", { password });
 }
 
 export function apiUserFavorites() {

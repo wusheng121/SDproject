@@ -206,6 +206,7 @@ class Product(db.Model, TimestampMixin):
     ai_category = db.Column(db.String(50), nullable=True)
     ai_condition = db.Column(db.String(20), nullable=True)
     status = db.Column(db.String(20), default="pending", nullable=False, index=True)
+    reject_reason = db.Column(db.String(200), nullable=True)
     seller_id = db.Column(
         db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )

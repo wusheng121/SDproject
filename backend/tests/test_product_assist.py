@@ -18,19 +18,32 @@ def _login(client):
     return {"Authorization": f"Bearer {response.get_json()['data']['access_token']}"}
 
 
-def test_image_recognition_mock_requires_uploaded_image(client):
+def test_image_recognition_uses_deepseek_and_requires_an_image(client, monkeypatch):
     response = client.post("/api/ai/recognize", data={})
     assert response.status_code == 400
 
+    monkeypatch.setattr(
+        "routes.product_routes.recognize_listing",
+        lambda image_bytes, mime: {
+            "name": "索尼头戴耳机",
+            "brand": "索尼",
+            "category": "耳机",
+            "condition": "九五新",
+            "description": "黑色头戴耳机",
+            "source": "deepseek",
+        },
+    )
     response = client.post(
         "/api/ai/recognize",
         data={"image": (BytesIO(b"mock-image"), "item.jpg", "image/jpeg")},
         content_type="multipart/form-data",
     )
     assert response.status_code == 200
-    recognition = response.get_json()["data"]["recognition"]
-    assert recognition["category"]
-    assert recognition["condition"]
+    body = response.get_json()["data"]
+    assert body["mock"] is False
+    assert body["recognition"]["category"] == "耳机"
+    assert body["recognition"]["source"] == "deepseek"
+    assert body["recognition"]["keywords"] == ["耳机"]
 
 
 def _png() -> bytes:

@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div class="auth-page">
     <div class="auth-container">
       <!-- 左侧装饰区 -->
@@ -57,20 +57,44 @@
                 <span class="label-icon">🔒</span>
                 <span>密码</span>
               </label>
-              <input 
-                v-model="form.password" 
-                :type="showPassword ? 'text' : 'password'"
-                class="form-input"
-                placeholder="请输入密码"
-                required
-              />
-              <button 
-                type="button"
-                class="password-toggle"
-                @click="showPassword = !showPassword"
-              >
-                {{ showPassword ? '👁️' : '👁️‍🗨️' }}
-              </button>
+              <div class="password-field">
+                <input 
+                  v-model="form.password" 
+                  :type="showPassword ? 'text' : 'password'"
+                  class="form-input"
+                  placeholder="请输入密码"
+                  required
+                />
+                <button 
+                  type="button"
+                  class="password-toggle"
+                  @click="showPassword = !showPassword"
+                >
+                  {{ showPassword ? '👁️' : '👁️‍🗨️' }}
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span class="label-icon">🪪</span>
+                <span>登录身份</span>
+              </label>
+              <div class="role-choices">
+                <label><input v-model="form.login_role" type="radio" value="normal_user" /> 普通用户</label>
+                <label><input v-model="form.login_role" type="radio" value="admin" /> 管理员</label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span class="label-icon">🔢</span>
+                <span>验证码</span>
+              </label>
+              <div class="captcha-row">
+                <input v-model="form.captcha_code" type="text" class="form-input" maxlength="4" placeholder="输入右侧字符" required />
+                <img v-if="captchaImage" :src="captchaImage" alt="验证码" title="点击换一张" @click="loadCaptcha" />
+              </div>
             </div>
 
             <div class="form-options">
@@ -107,28 +131,44 @@
 </template>
 
 <script setup>
-import { reactive, ref } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import { ElMessage } from "element-plus";
-import { useRouter } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 
 import { useUserStore } from "../stores/user";
-import { apiGetPreferences } from "../api/user";
+import { apiCaptcha, apiGetPreferences } from "../api/user";
 import PreferenceDialog from "../components/PreferenceDialog.vue";
 
+const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
 const loading = ref(false);
 const showPassword = ref(false);
 const showPreferenceDialog = ref(false);
 
+const captchaImage = ref("");
 const form = reactive({
   identifier: "",
   password: "",
-  remember: false
+  remember: false,
+  captcha_id: "",
+  captcha_code: "",
+  login_role: "normal_user"
 });
 
+async function loadCaptcha() {
+  try {
+    const response = await apiCaptcha();
+    form.captcha_id = response.data.data.captcha_id;
+    form.captcha_code = "";
+    captchaImage.value = response.data.data.image;
+  } catch (error) {
+    ElMessage.error(error?.message || "验证码加载失败");
+  }
+}
+
 async function onSubmit() {
-  if (!form.identifier || !form.password) {
+  if (!form.identifier || !form.password || !form.captcha_code) {
     ElMessage.warning("请填写完整信息");
     return;
   }
@@ -145,6 +185,7 @@ async function onSubmit() {
     }
   } catch (error) {
     ElMessage.error(error?.message || "用户名或密码错误");
+    await loadCaptcha();
   } finally {
     loading.value = false;
   }
@@ -169,6 +210,8 @@ async function checkPreferences() {
   }
 }
 
+onMounted(loadCaptcha);
+
 function onPreferenceSaved() {
   ElMessage.success("兴趣标签已更新，推荐内容将根据您的偏好调整");
   router.push("/");
@@ -180,6 +223,9 @@ function handleForgotPassword() {
 </script>
 
 <style scoped>
+.captcha-row { display: flex; align-items: center; gap: 8px; }
+.captcha-row .form-input { flex: 1; }
+.captcha-row img { height: 42px; cursor: pointer; border: 1px solid var(--border-color); }
 .auth-page {
   min-height: calc(100vh - 70px);
   display: flex;
@@ -416,21 +462,31 @@ function handleForgotPassword() {
   color: var(--text-light);
 }
 
-.password-toggle {
-  position: absolute;
-  right: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 8px;
-  transition: transform 0.2s ease;
+.password-field {
+  position: relative;
 }
 
-.password-toggle:hover {
-  transform: translateY(-50%) scale(1.1);
+.password-field .form-input {
+  padding-right: 48px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 0;
+  right: 6px;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  margin: auto 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
 }
 
 .form-options {
@@ -438,6 +494,21 @@ function handleForgotPassword() {
   justify-content: space-between;
   align-items: center;
   margin-top: -8px;
+}
+
+.role-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.role-choices label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-primary);
+  font-size: 14px;
+  cursor: pointer;
 }
 
 .remember-me {

@@ -9,6 +9,8 @@ logger = logging.getLogger(__name__)
 
 def send_mail(to: str, subject: str, text: str) -> bool:
     host = current_app.config.get("SMTP_HOST")
+    if not host and not current_app.config.get("TESTING"):
+        host = "127.0.0.1"
     if not host:
         if current_app.config.get("APP_ENV") != "production":
             logger.info("mail skipped (SMTP_HOST not configured): to=%s subject=%s", to, subject)

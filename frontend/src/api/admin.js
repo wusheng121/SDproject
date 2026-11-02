@@ -8,8 +8,8 @@ export function apiGetUser(userId) {
   return http.get(`/v1/admin/users/${userId}`);
 }
 
-export function apiBanUser(userId, reason) {
-  return http.post(`/v1/admin/users/${userId}/ban`, { reason });
+export function apiBanUser(userId) {
+  return http.post(`/v1/admin/users/${userId}/ban`);
 }
 
 export function apiUnbanUser(userId) {
@@ -38,6 +38,10 @@ export function apiOfflineProduct(productId, reason) {
 
 export function apiGetLogs(params) {
   return http.get("/v1/admin/operation-logs", { params });
+}
+
+export function apiGetAgentDialogue(sessionId) {
+  return http.get(`/v1/admin/agent-dialogues/${sessionId}`);
 }
 
 export function apiGetStatistics() {

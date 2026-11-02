@@ -1,5 +1,13 @@
 import http from "./http";
 
+export function apiAssistantSessions() {
+  return http.get("/v1/assistant/sessions");
+}
+
+export function apiAssistantSession(sessionId) {
+  return http.get(`/v1/assistant/sessions/${sessionId}`);
+}
+
 export function apiAssistantChat({ message, sessionId, filename, imageDataUrl }) {
   return http.post(
     "/v1/assistant/chat",

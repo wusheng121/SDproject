@@ -27,7 +27,14 @@
             <button type="button" @click="router.push('/publish')"><span class="link-mark">+</span><span><strong>发布闲置</strong><small>让闲置物品找到新主人</small></span><b>›</b></button>
             <button type="button" @click="router.push('/search')"><span class="link-mark">市</span><span><strong>继续逛集市</strong><small>发现同学发布的校园好物</small></span><b>›</b></button>
           </div>
-          <div class="notice-line">商品发布后需通过审核，审核状态可在管理端查看。</div>
+          <div class="notice-line">待审核的商品撤回后会消失，被拒绝或已下架的可以删除，正在出售的可以下架。</div>
+          <div v-if="myProducts.length" class="transaction-links">
+            <button v-for="item in myProducts" :key="item.id" type="button" @click="router.push(`/product/${item.id}`)">
+              <span class="link-mark">物</span>
+              <span><strong>{{ item.name }}</strong><small>{{ productStatus(item.status) }} · ¥{{ item.price }}</small><small v-if="item.status === 'rejected' && item.reject_reason">拒绝原因：{{ item.reject_reason }}</small></span>
+              <b>›</b>
+            </button>
+          </div>
         </section>
 
         <section class="content-section">
@@ -41,10 +48,12 @@
       <aside class="side-column">
         <section class="content-section quick-section">
           <div class="section-title"><div><h2>常用入口</h2></div></div>
+          <button type="button" @click="router.push('/messages')">卖家消息 <span>›</span></button>
           <button type="button" @click="router.push('/favorites')">我的收藏 <span>›</span></button>
           <button type="button" @click="router.push('/publish')">发布商品 <span>›</span></button>
           <button type="button" @click="router.push('/')">首页推荐 <span>›</span></button>
           <button type="button" @click="handleLogout">退出登录 <span>›</span></button>
+          <button type="button" class="danger" @click="closeAccount">注销账号 <span>›</span></button>
         </section>
         <section class="tip-panel"><strong>让推荐更懂你</strong><p>浏览、收藏和互动会帮助系统逐步了解你感兴趣的品类。</p><el-button type="primary" @click="router.push('/')">查看首页推荐</el-button></section>
       </aside>
@@ -52,7 +61,11 @@
 
     <PreferenceDialog v-model="showPreferenceDialog" @saved="onPreferenceSaved" />
     <el-dialog v-model="showEditProfile" title="编辑个人资料" width="420px">
-      <el-form label-width="76px"><el-form-item label="用户名"><el-input v-model="profileForm.username" maxlength="50" /></el-form-item><el-form-item label="手机号"><el-input v-model="profileForm.phone" placeholder="留空则不修改" /></el-form-item></el-form>
+      <el-form label-width="76px">
+        <el-form-item label="用户名"><el-input v-model="profileForm.username" maxlength="50" /></el-form-item>
+        <el-form-item label="邮箱"><el-input v-model="profileForm.email" maxlength="100" /></el-form-item>
+        <el-form-item label="手机号"><el-input v-model="profileForm.phone" placeholder="留空则不修改" /></el-form-item>
+      </el-form>
       <template #footer><el-button @click="showEditProfile = false">取消</el-button><el-button type="primary" :loading="savingProfile" @click="saveProfile">保存</el-button></template>
     </el-dialog>
   </div>
@@ -61,26 +74,30 @@
 <script setup>
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
-import { ElMessage } from "element-plus";
+import { ElMessage, ElMessageBox } from "element-plus";
 import { useUserStore } from "../stores/user";
-import { apiGetPreferences, apiUpdateProfile, apiUserStats } from "../api/user";
+import { apiCloseAccount, apiGetPreferences, apiUpdateProfile, apiUserStats } from "../api/user";
+import { apiMyProducts } from "../api/products";
 import PreferenceDialog from "../components/PreferenceDialog.vue";
 
 const router = useRouter();
+const productStatus = (status) => ({ pending: "待审核", approved: "在售", rejected: "已拒绝", offline: "已下架", sold: "已售出" }[status] || status);
 const userStore = useUserStore();
 const showPreferenceDialog = ref(false);
 const showEditProfile = ref(false);
 const savingProfile = ref(false);
-const profileForm = ref({ username: "", phone: "" });
+const profileForm = ref({ username: "", email: "", phone: "" });
 const preferences = ref([]);
+const myProducts = ref([]);
 const stats = ref({ favorites: 0, products: 0, behaviors: 0, categories: 0 });
 
 async function loadUserData() {
   try {
     await userStore.fetchProfile();
-    const [prefResp, statsResp] = await Promise.all([apiGetPreferences(), apiUserStats()]);
+    const [prefResp, statsResp, productResp] = await Promise.all([apiGetPreferences(), apiUserStats(), apiMyProducts()]);
     preferences.value = prefResp?.data?.data?.preferred_categories || [];
     stats.value = statsResp?.data?.data || stats.value;
+    myProducts.value = productResp?.data?.data?.items || [];
   } catch (error) {
     console.error("加载用户数据失败:", error);
   }
@@ -88,17 +105,32 @@ async function loadUserData() {
 
 function openPreferenceDialog() { showPreferenceDialog.value = true; }
 function openEditProfile() {
-  profileForm.value = { username: userStore.profile?.username || "", phone: "" };
+  profileForm.value = { username: userStore.profile?.username || "", email: userStore.profile?.email || "", phone: "" };
   showEditProfile.value = true;
 }
 async function saveProfile() {
   savingProfile.value = true;
   try {
-    const payload = { username: profileForm.value.username };
+    if (profileForm.value.username.length < 3 || profileForm.value.username.includes("<")) {
+      ElMessage.warning("用户名需要 3-50 位，且不能包含 HTML 标签");
+      return;
+    }
+    const email = profileForm.value.email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.includes("<")) {
+      ElMessage.warning("请填写正确的邮箱");
+      return;
+    }
+    if (profileForm.value.phone.trim() && !/^1\d{10}$/.test(profileForm.value.phone.trim())) {
+      ElMessage.warning("手机号需要是 11 位数字");
+      return;
+    }
+    const previousEmail = String(userStore.profile?.email || "");
+    const payload = { username: profileForm.value.username, email };
     if (profileForm.value.phone.trim()) payload.phone = profileForm.value.phone.trim();
     const response = await apiUpdateProfile(payload);
     userStore.profile = response?.data?.data?.user || userStore.profile;
-    ElMessage.success("资料已更新");
+    const emailChanged = email.toLowerCase() !== previousEmail.toLowerCase();
+    ElMessage.success(emailChanged ? "资料已更新，新邮箱的验证邮件已发出" : "资料已更新");
     showEditProfile.value = false;
     await loadUserData();
   } catch (error) {
@@ -114,6 +146,30 @@ async function onPreferenceSaved() {
 async function handleLogout() {
   await userStore.logout();
   router.push("/login");
+}
+async function closeAccount() {
+  const type = userStore.profile?.user_type;
+  if (type === "admin" || type === "agent_service") {
+    ElMessage.warning("管理员和助手账号不能注销");
+    return;
+  }
+  try {
+    const { value } = await ElMessageBox.prompt(
+      "注销后不能再登录。未成交的商品会下架，已经产生的订单会保留。请输入当前密码。",
+      "注销账号",
+      { inputType: "password", inputPlaceholder: "当前密码", confirmButtonText: "确认注销", cancelButtonText: "取消" }
+    );
+    if (!value) {
+      ElMessage.warning("请输入密码");
+      return;
+    }
+    await apiCloseAccount(value);
+    await userStore.logout();
+    ElMessage.success("账号已注销");
+    router.push("/login");
+  } catch (error) {
+    if (error === "cancel" || error === "close") return;
+  }
 }
 onMounted(() => {
   if (!userStore.token) { router.push("/login"); return; }
@@ -162,6 +218,7 @@ button.stat-item:hover { background: var(--bg-hover); }
 .quick-section > button { display: flex; justify-content: space-between; padding: 11px 0; border: 0; border-bottom: 1px solid var(--border-color); color: var(--text-primary); background: transparent; cursor: pointer; text-align: left; font-size: 13px; }
 .quick-section > button:last-child { border-bottom: 0; }
 .quick-section > button:hover { color: var(--primary-color); }
+.quick-section > button.danger { color: #c45656; }
 .quick-section > button span { color: var(--text-secondary); font-size: 19px; line-height: 14px; }
 .tip-panel { padding: 20px; color: white; background: #263b35; }
 .tip-panel strong { font-size: 15px; }

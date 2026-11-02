@@ -2,7 +2,7 @@ from flask import Blueprint, request
 
 from auth import login_required
 from extensions import db
-from services.agent_dialogue import converse, recognize_image
+from services.agent_dialogue import converse, dialogue_detail, dialogue_summaries, recognize_image
 from utils.audit import log_operation
 from utils.response import api_error, api_ok
 
@@ -20,6 +20,21 @@ def recognize(user):
     log_operation(user, "agent.recognize.mock", "product", after=result)
     db.session.commit()
     return api_ok(result)
+
+
+@assistant_bp.get("/sessions")
+@login_required
+def sessions(user):
+    return api_ok(dialogue_summaries(user))
+
+
+@assistant_bp.get("/sessions/<session_id>")
+@login_required
+def session_detail(user, session_id):
+    detail = dialogue_detail(user, session_id)
+    if detail is None:
+        return api_error("NOT_FOUND", "这段对话不存在", 404)
+    return api_ok(detail)
 
 
 @assistant_bp.post("/chat")
@@ -45,6 +60,8 @@ def chat(user):
         "agent_dialogue",
         resource_id=result["session_id"],
         after={
+            "message": result["message"],
+            "reply": result["reply"],
             "skill": result["skill"],
             "engine": result["engine"],
             "slots": result["slots"],
