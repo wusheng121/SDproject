@@ -59,7 +59,7 @@ jobs:
       - name: Tests
         working-directory: backend
         env:
-          TEST_DATABASE_URL: sqlite:///:memory:
+          TEST_DATABASE_URL: "sqlite:///:memory:"
         run: pytest -q
 
   frontend:
