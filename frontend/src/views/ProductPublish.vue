@@ -26,16 +26,13 @@
 
         <section class="form-section">
           <div class="section-heading"><div><span class="section-kicker">01 · 商品信息</span><h2>商品信息</h2><p>把名称、品类、成色和使用情况一次写清楚。</p></div></div>
-          <el-form-item label="商品名称" prop="name"><el-input v-model="form.name" maxlength="200" placeholder="如：小米 13 256G" /></el-form-item>
+          <el-form-item label="商品名称" prop="name"><el-input v-model="form.name" maxlength="80" placeholder="如：小米 13 256G" /></el-form-item>
           <div class="two-columns">
             <el-form-item label="商品品类" prop="category"><el-select v-model="form.category" filterable placeholder="请选择品类"><el-option v-for="category in categories" :key="category" :label="category" :value="category" /></el-select></el-form-item>
             <el-form-item label="品牌"><el-input v-model="form.brand" maxlength="100" placeholder="如：小米、无品牌" /></el-form-item>
           </div>
-          <div class="two-columns">
-            <el-form-item label="商品成色" prop="condition"><el-select v-model="form.condition" placeholder="请选择"><el-option v-for="condition in conditionOptions" :key="condition" :label="condition" :value="condition" /></el-select></el-form-item>
-            <el-form-item label="是否有笔记"><el-select v-model="form.has_notes"><el-option label="没有笔记" :value="false" /><el-option label="有少量笔记" :value="true" /></el-select></el-form-item>
-          </div>
-          <el-form-item label="商品描述" prop="description"><el-input v-model="form.description" type="textarea" :rows="4" maxlength="4000" show-word-limit placeholder="介绍购买时间、使用情况和配件，例如：使用一年，功能正常，附原装充电器。" /></el-form-item>
+          <el-form-item label="商品成色" prop="condition"><el-select v-model="form.condition" placeholder="请选择"><el-option v-for="condition in conditionOptions" :key="condition" :label="condition" :value="condition" /></el-select></el-form-item>
+          <el-form-item label="商品描述" prop="description"><el-input v-model="form.description" type="textarea" :rows="4" maxlength="1000" show-word-limit placeholder="介绍购买时间、使用情况和配件，例如：使用一年，功能正常，附原装充电器。" /></el-form-item>
           <el-form-item label="瑕疵说明"><el-input v-model="form.defect_description" maxlength="500" placeholder="如：边角有轻微磨损；没有瑕疵可留空" /></el-form-item>
           <p class="form-tip">如实描述成色和瑕疵，能减少交易沟通成本。</p>
         </section>
@@ -59,7 +56,7 @@
       </el-form>
       <aside class="guide-panel">
         <div class="guide-heading"><span class="guide-mark">✓</span><div><h2>发布小贴士</h2><p>把这几项写好，更容易成交</p></div></div>
-        <ul><li><strong>标题写清品牌和型号</strong><span>方便买家搜索和判断</span></li><li><strong>成色选择贴近实际</strong><span>笔记、磨损情况可以单独说明</span></li><li><strong>先看成交价再定价</strong><span>参考区间来自已支付订单，售价仍由你填写</span></li></ul>
+        <ul><li><strong>标题写清品牌和型号</strong><span>方便买家搜索和判断</span></li><li><strong>成色选择贴近实际</strong><span>磨损、瑕疵情况可以单独说明</span></li><li><strong>先看成交价再定价</strong><span>参考区间来自已支付订单，售价仍由你填写</span></li></ul>
         <div class="review-note"><strong>提交后会发生什么？</strong><p>商品将进入管理员审核，通过后展示在商品列表。</p></div>
       </aside>
     </div>
@@ -89,7 +86,7 @@ const previewIsObjectUrl = ref(false);
 const selectedImage = ref(null);
 const savedImageUrl = ref("");
 const aiTags = ref({ category: "", condition: "" });
-const form = reactive({ name: "", brand: "", category: "", description: "", condition: "", has_notes: false, defect_description: "", price: "", trade_method: "", trade_location: "" });
+const form = reactive({ name: "", brand: "", category: "", description: "", condition: "", defect_description: "", price: "", trade_method: "", trade_location: "" });
 const rules = {
   name: [{ required: true, message: "请填写商品名称", trigger: "blur" }, { validator: (_rule, value, callback) => value && value.length <= 80 && !value.includes("<") ? callback() : callback(new Error("名称最多 80 字，且不能包含 HTML 标签")), trigger: "blur" }],
   category: [{ required: true, message: "请选择商品品类", trigger: "change" }],
@@ -115,7 +112,6 @@ onMounted(async () => {
       category: product.categories?.[0] || "",
       description: product.description || "",
       condition: product.condition || "",
-      has_notes: Boolean(product.has_notes),
       defect_description: product.defect_description || "",
       price: product.price || "",
       trade_method: product.trade_method || "",

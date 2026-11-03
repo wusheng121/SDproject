@@ -74,14 +74,11 @@ public class CampusApi {
         if (store.phoneTaken(phoneHash)) {
             throw new ApiException("AUTH_PHONE_EXISTS", "手机号已被使用", 409);
         }
-        String role = MarketStore.str(body.get("login_role"));
-        if (role.isBlank()) {
-            role = "normal_user";
+        String requestedRole = MarketStore.str(body.get("login_role"));
+        if ("admin".equals(requestedRole) || "agent_service".equals(requestedRole)) {
+            throw new ApiException("AUTH_FORBIDDEN", "公开注册不能创建管理员或服务账号", 403);
         }
-        if (!List.of("normal_user", "admin").contains(role)) {
-            throw new ApiException("VALIDATION_ERROR", "注册只能选择普通用户或管理员", 422);
-        }
-        long userId = store.register(username, email, tokens.hashPassword(password), phones.encrypt(phone), phoneHash, role);
+        long userId = store.register(username, email, tokens.hashPassword(password), phones.encrypt(phone), phoneHash);
         mail.sendVerification(email, store.issueEmailToken(userId));
         return ResponseEntity.status(201).body(Map.of("data", Map.of("user", store.userPublic(store.findUser(userId), false))));
     }
@@ -146,24 +143,20 @@ public class CampusApi {
             throw new ApiException("AUTH_ACCOUNT_DISABLED", "账号已被禁用", 403);
         }
         long userId = MarketStore.num(user.get("id"));
-        String loginRole = MarketStore.str(body.get("login_role"));
-        if (loginRole.isBlank()) {
-            loginRole = String.valueOf(user.get("user_type"));
-        }
-        if ("agent_service".equals(loginRole)) {
+        List<String> roles = store.roles(userId);
+        if (roles.contains("agent_service")) {
             throw new ApiException("AUTH_FORBIDDEN", "助手账号只供外部接口使用，不能从网页登录", 403);
         }
-        if (!List.of("normal_user", "admin").contains(loginRole)) {
-            throw new ApiException("VALIDATION_ERROR", "请选择登录身份", 422);
+        if (!roles.contains("normal_user") && !roles.contains("admin")) {
+            throw new ApiException("AUTH_FORBIDDEN", "账号没有可用的登录角色", 403);
         }
-        if (!store.roles(userId).contains(loginRole)) {
-            throw new ApiException("AUTH_FORBIDDEN", "这个账号没有所选身份", 403);
-        }
+        String loginRole = roles.contains("admin") ? "admin" : "normal_user";
         store.setLoginRole(userId, loginRole);
         store.resetLogin(userId);
         String refresh = store.createSession(userId);
+        List<String> permissions = store.permissions(userId);
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("access_token", tokens.accessToken(userId, loginRole));
+        data.put("access_token", tokens.accessToken(userId, loginRole, roles, permissions));
         data.put("token_type", "Bearer");
         data.put("expires_in", 900);
         data.put("user", store.userPublic(store.findUser(userId), true));
@@ -178,8 +171,11 @@ public class CampusApi {
         }
         String refresh = store.createSession(userId);
         Map<String, Object> user = store.findUser(userId);
+        List<String> roles = store.roles(userId);
+        String effectiveRole = roles.contains("admin") ? "admin" : "normal_user";
+        List<String> permissions = store.permissions(userId);
         Map<String, Object> data = new LinkedHashMap<>();
-        data.put("access_token", tokens.accessToken(userId, String.valueOf(user.get("user_type"))));
+        data.put("access_token", tokens.accessToken(userId, effectiveRole, roles, permissions));
         data.put("token_type", "Bearer");
         data.put("expires_in", 900);
         data.put("user", store.userPublic(user, true));
@@ -250,6 +246,22 @@ public class CampusApi {
         return ResponseEntity.ok()
                 .header(HttpHeaders.SET_COOKIE, Tokens.clearRefreshCookie())
                 .body(Map.of("data", Map.of("closed", true)));
+    }
+
+    @PostMapping("/api/v1/users/me/password")
+    public Map<String, Object> changePassword(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+        Map<String, Object> user = require(request);
+        String current = body.get("current_password") == null ? "" : String.valueOf(body.get("current_password"));
+        String newPassword = body.get("new_password") == null ? "" : String.valueOf(body.get("new_password"));
+        if (!tokens.passwordMatches(current, String.valueOf(user.get("password_hash")))) {
+            throw new ApiException("VALIDATION_ERROR", "当前密码不正确", 422);
+        }
+        if (!validPassword(newPassword)) {
+            throw new ApiException("VALIDATION_ERROR", "新密码至少 8 位，且必须包含字母和数字", 422);
+        }
+        long userId = MarketStore.num(user.get("id"));
+        store.changePassword(userId, tokens.hashPassword(newPassword));
+        return Map.of("data", Map.of("updated", true, "must_change_password", false));
     }
 
     @GetMapping("/api/v1/users/me/preferences")
@@ -666,7 +678,7 @@ public class CampusApi {
 
     private Map<String, Object> requirePermission(HttpServletRequest request, String permission) {
         Map<String, Object> user = require(request);
-        if (!store.hasPermission(MarketStore.num(user.get("id")), permission, tokens.userType(request))) {
+        if (!store.hasPermission(MarketStore.num(user.get("id")), permission)) {
             throw new ApiException("AUTH_FORBIDDEN", "没有执行该操作的权限", 403);
         }
         return user;

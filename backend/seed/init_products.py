@@ -4,6 +4,8 @@ from flask import current_app
 
 from extensions import db
 from models import (
+    Agent,
+    AgentSkill,
     ApiKey,
     Category,
     Permission,
@@ -11,6 +13,7 @@ from models import (
     ProductCategory,
     Role,
     RolePermission,
+    Skill,
     User,
     UserRole,
 )
@@ -29,6 +32,9 @@ PERMISSIONS = [
     ("review:write", "提交评价"),
     ("admin:log", "查看操作日志"),
     ("admin:stats", "查看平台统计"),
+    ("skill:view", "查看 Skill"),
+    ("skill:manage", "管理 Skill"),
+    ("skill:test", "测试 Skill"),
 ]
 
 ROLES = {
@@ -54,6 +60,9 @@ ROLES = {
             "recommendation:query",
             "admin:log",
             "admin:stats",
+            "skill:view",
+            "skill:manage",
+            "skill:test",
         ],
     },
     "agent_service": {
@@ -247,6 +256,71 @@ def seed_products():
     print(f"Products seeded: {added} added, {Product.query.count()} total")
 
 
+def seed_agent_skills():
+    agents = {
+        "main_agent": ("主 Agent", "main", "意图识别、任务拆解与子 Agent 路由"),
+        "product_agent": ("商品 Agent", "sub", "商品查询、自然语言筛选与识图"),
+        "recommendation_agent": ("推荐 Agent", "sub", "个性化推荐与相似商品"),
+        "trade_agent": ("交易 Agent", "sub", "购物车、订单与交易状态查询"),
+        "user_agent": ("用户 Agent", "sub", "用户资料与偏好查询"),
+        "admin_read_agent": ("管理只读 Agent", "sub", "待审核商品与审计日志只读查询"),
+    }
+    for code, (name, agent_type, description) in agents.items():
+        if not Agent.query.filter_by(code=code).first():
+            db.session.add(
+                Agent(
+                    code=code,
+                    name=name,
+                    agent_type=agent_type,
+                    description=description,
+                    model="deepseek-flash",
+                    status="active",
+                )
+            )
+
+    skills = {
+        "product_query": ("SK-001", "商品信息查询", "product", "查询已上架商品列表", "product:view"),
+        "nl_filter": ("SK-002", "自然语言筛选", "product", "自然语言商品筛选", "product:view"),
+        "recommendation_query": ("SK-003", "个性化推荐查询", "recommendation", "查询用户推荐商品", "recommendation:query"),
+        "product_recognize": ("SK-004", "商品图片识别", "product", "根据图片识别商品关键词与分类", "product:view"),
+    }
+    for code, (skill_no, name, module, description, scope) in skills.items():
+        if not Skill.query.filter_by(code=code).first():
+            db.session.add(
+                Skill(
+                    skill_no=skill_no,
+                    code=code,
+                    name=name,
+                    module=module,
+                    description=description,
+                    input_schema_json="{}",
+                    output_schema_json="{}",
+                    allowed_operations="只读查询",
+                    forbidden_operations="禁止修改、删除、批量写入",
+                    scope=scope,
+                    handler_type="java",
+                    handler_target=code,
+                    status="published",
+                    version=1,
+                )
+            )
+    db.session.flush()
+
+    mappings = {
+        "product_agent": ("product_query", "nl_filter", "product_recognize"),
+        "recommendation_agent": ("recommendation_query",),
+    }
+    for agent_code, skill_codes in mappings.items():
+        agent = Agent.query.filter_by(code=agent_code).first()
+        if not agent:
+            continue
+        for skill_code in skill_codes:
+            skill = Skill.query.filter_by(code=skill_code).first()
+            if skill and not AgentSkill.query.filter_by(agent_id=agent.id, skill_id=skill.id).first():
+                db.session.add(AgentSkill(agent_id=agent.id, skill_id=skill.id, enabled=True, priority=100))
+    db.session.commit()
+
+
 def seed_all():
     if current_app.config.get("APP_ENV") == "production":
         raise RuntimeError("Demo seed is disabled in production")
@@ -254,4 +328,5 @@ def seed_all():
     seed_categories()
     seed_users()
     seed_products()
+    seed_agent_skills()
     print("Demo data seeded: testuser / admin / agent")

@@ -40,7 +40,6 @@ public class DataProxy {
             return false;
         }
         return path.startsWith("/api/recommendations")
-                || path.startsWith("/api/v1/assistant")
                 || path.startsWith("/api/ai/")
                 || path.startsWith("/api/products/price-reference");
     }
@@ -48,8 +47,6 @@ public class DataProxy {
     @RequestMapping({
             "/api/recommendations",
             "/api/recommendations/**",
-            "/api/v1/assistant",
-            "/api/v1/assistant/**",
             "/api/ai/**",
             "/api/products/price-reference"
     })

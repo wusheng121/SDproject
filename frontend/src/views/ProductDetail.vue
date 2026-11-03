@@ -46,6 +46,18 @@
             <p v-if="isOwner && product.status === 'rejected'" class="reject-reason">
               {{ product.reject_reason ? `拒绝原因：${product.reject_reason}` : "管理员拒绝了这件商品，但没有留下原因。" }}
             </p>
+            <div v-if="product.brand" class="meta-item">
+              <span class="meta-label">品牌：</span>
+              <span>{{ product.brand }}</span>
+            </div>
+            <div v-if="product.trade_method" class="meta-item">
+              <span class="meta-label">交易方式：</span>
+              <span>{{ product.trade_method }}</span>
+            </div>
+            <div v-if="product.trade_location" class="meta-item">
+              <span class="meta-label">交易地点：</span>
+              <span>{{ product.trade_location }}</span>
+            </div>
             <div class="meta-item">
               <span class="meta-label">卖家：</span>
               <span>{{ product.seller?.username || '未知' }}</span>
@@ -57,6 +69,11 @@
           <div class="product-description">
             <h3>商品描述</h3>
             <p>{{ product.description || '暂无描述' }}</p>
+          </div>
+
+          <div v-if="product.defect_description" class="product-description">
+            <h3>瑕疵说明</h3>
+            <p>{{ product.defect_description }}</p>
           </div>
 
           <div class="action-buttons">

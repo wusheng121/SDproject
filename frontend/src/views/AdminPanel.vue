@@ -3,7 +3,7 @@
     <div class="admin-header">
       <div>
         <h1 class="page-title">管理后台</h1>
-        <p class="page-subtitle">用户、商品审核、操作日志与平台统计</p>
+        <p class="page-subtitle">用户、商品审核、Skill、操作日志与平台统计</p>
       </div>
       <el-button :loading="loading" @click="reloadAll">刷新</el-button>
     </div>
@@ -114,6 +114,18 @@
           <el-pagination class="pager" background layout="total, prev, pager, next" :total="productTotal" :page-size="productPageSize" :current-page="productPage" @current-change="loadProducts" />
         </el-tab-pane>
 
+        <el-tab-pane label="Skill 管理" name="skills">
+          <SkillAdminPanel />
+        </el-tab-pane>
+
+        <el-tab-pane label="Agent 接入" name="agent-keys">
+          <AgentKeyPanel />
+        </el-tab-pane>
+
+        <el-tab-pane label="Agent 会话" name="agent-sessions">
+          <AgentSessionPanel />
+        </el-tab-pane>
+
         <el-tab-pane label="操作日志" name="logs">
           <div class="toolbar">
             <el-select v-model="logFilters.action" placeholder="全部动作" clearable style="width: 220px" @change="loadLogs(1)">
@@ -193,6 +205,9 @@ import {
   apiUnbanUser
 } from "../api/admin";
 import { useUserStore } from "../stores/user";
+import SkillAdminPanel from "../components/SkillAdminPanel.vue";
+import AgentKeyPanel from "../components/AgentKeyPanel.vue";
+import AgentSessionPanel from "../components/AgentSessionPanel.vue";
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -228,7 +243,12 @@ const logActions = [
   { value: "agent.dialogue.query", label: "购物助手查询" },
   { value: "agent.dialogue.refuse", label: "购物助手拒绝" },
   { value: "agent.products.query", label: "外部查询商品" },
-  { value: "agent.recommendations.query", label: "外部查询推荐" }
+  { value: "agent.recommendations.query", label: "外部查询推荐" },
+  { value: "skill.create", label: "创建 Skill" },
+  { value: "skill.update", label: "更新 Skill" },
+  { value: "skill.publish", label: "发布 Skill" },
+  { value: "skill.disable", label: "禁用 Skill" },
+  { value: "skill.test", label: "测试 Skill" }
 ];
 const logResourceTypes = [
   { value: "user", label: "用户" },

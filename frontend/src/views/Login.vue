@@ -77,17 +77,6 @@
 
             <div class="form-group">
               <label class="form-label">
-                <span class="label-icon">🪪</span>
-                <span>登录身份</span>
-              </label>
-              <div class="role-choices">
-                <label><input v-model="form.login_role" type="radio" value="normal_user" /> 普通用户</label>
-                <label><input v-model="form.login_role" type="radio" value="admin" /> 管理员</label>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">
                 <span class="label-icon">🔢</span>
                 <span>验证码</span>
               </label>
@@ -152,8 +141,7 @@ const form = reactive({
   password: "",
   remember: false,
   captcha_id: "",
-  captcha_code: "",
-  login_role: "normal_user"
+  captcha_code: ""
 });
 
 async function loadCaptcha() {
@@ -178,7 +166,15 @@ async function onSubmit() {
     const resp = await userStore.login(form);
     if (resp?.status >= 200 && resp?.status < 300) {
       ElMessage.success("登录成功");
-      // 登录成功后检查用户是否设置了兴趣标签
+      if (userStore.profile?.must_change_password) {
+        router.replace("/change-password");
+        return;
+      }
+      if (userStore.isAdmin) {
+        router.push("/admin");
+        return;
+      }
+      // 普通用户登录成功后检查兴趣标签
       await checkPreferences();
     } else {
       ElMessage.error(resp?.data?.message || "登录失败");
@@ -218,7 +214,7 @@ function onPreferenceSaved() {
 }
 
 function handleForgotPassword() {
-  ElMessage.info("请联系管理员重置密码");
+  router.push("/forgot-password");
 }
 </script>
 

@@ -50,18 +50,38 @@ public class MarketStore {
     }
 
     @Transactional
-    public long register(String username, String email, String passwordHash, String phoneCipher, String phoneHash, String roleName) {
+    public long register(String username, String email, String passwordHash, String phoneCipher, String phoneHash) {
         jdbc.update("""
                 INSERT INTO users
                 (username, email, email_normalized, password_hash, phone_ciphertext, phone_hash, user_type, failed_login_count, is_active, version, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, 0, 1, 1, ?, ?)
-                """, username, email, email, passwordHash, phoneCipher, phoneHash, roleName, now(), now());
+                VALUES (?, ?, ?, ?, ?, ?, 'normal_user', 0, 1, 1, ?, ?)
+                """, username, email, email, passwordHash, phoneCipher, phoneHash, now(), now());
         long userId = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
-        grantRole(userId, roleName);
-        if ("admin".equals(roleName)) {
-            grantRole(userId, "normal_user");
-        }
+        grantRole(userId, "normal_user");
         return userId;
+    }
+
+    @Transactional
+    public long bootstrapAdmin(String username, String email, String passwordHash) {
+        jdbc.update("""
+                INSERT INTO users
+                (username, email, email_normalized, password_hash, user_type, must_change_password, email_verified_at, failed_login_count, is_active, version, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 'admin', 1, ?, 0, 1, 1, ?, ?)
+                """, username, email, email, passwordHash, now(), now(), now());
+        long userId = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+        grantRole(userId, "normal_user");
+        grantRole(userId, "admin");
+        return userId;
+    }
+
+    public int countAdmins() {
+        Integer count = jdbc.queryForObject("""
+                SELECT COUNT(DISTINCT ur.user_id)
+                FROM user_roles ur
+                JOIN roles r ON r.id = ur.role_id
+                WHERE r.name = 'admin'
+                """, Integer.class);
+        return count == null ? 0 : count;
     }
 
     private void grantRole(long userId, String roleName) {
@@ -144,9 +164,10 @@ public class MarketStore {
         data.put("is_active", flag(user.get("is_active")));
         data.put("preferred_categories", split(str(user.get("preferred_categories"))));
         data.put("roles", roles(id));
+        data.put("must_change_password", flag(user.get("must_change_password")));
         data.put("created_at", text(user.get("created_at")));
         if (permissions) {
-            data.put("permissions", permissionsForRole(id, String.valueOf(user.get("user_type"))));
+            data.put("permissions", permissions(id));
         }
         return data;
     }
@@ -178,6 +199,22 @@ public class MarketStore {
                 WHERE ur.user_id = ? AND r.name = ? AND p.name = ?
                 """, Integer.class, userId, roleName, permission);
         return count != null && count > 0;
+    }
+
+    public boolean hasPermission(long userId, String permission) {
+        Integer count = jdbc.queryForObject("""
+                SELECT COUNT(*)
+                FROM user_roles ur
+                JOIN role_permissions rp ON rp.role_id = ur.role_id
+                JOIN permissions p ON p.id = rp.permission_id
+                WHERE ur.user_id = ? AND p.name = ?
+                """, Integer.class, userId, permission);
+        return count != null && count > 0;
+    }
+
+    public void changePassword(long userId, String passwordHash) {
+        jdbc.update("UPDATE users SET password_hash = ?, password_changed_at = ?, must_change_password = 0, updated_at = ? WHERE id = ?",
+                passwordHash, now(), now(), userId);
     }
 
     public List<String> permissionsForRole(long userId, String roleName) {
@@ -371,8 +408,8 @@ public class MarketStore {
         if (name.isBlank() || name.length() > 80 || name.indexOf('<') >= 0 || category.isBlank() || !CONDITIONS.contains(condition) || price <= 0 || price > 100000) {
             throw new ApiException("VALIDATION_ERROR", "请填写 1-80 字的名称、有效品类、1 到 100000 的价格和成色", 400);
         }
-        if (description.length() > 1000 || description.indexOf('<') >= 0) {
-            throw new ApiException("VALIDATION_ERROR", "商品描述最多 1000 字，且不能包含 HTML 标签", 400);
+        if (description.isBlank() || description.length() > 1000 || description.indexOf('<') >= 0) {
+            throw new ApiException("VALIDATION_ERROR", "商品描述不能为空，最多 1000 字，且不能包含 HTML 标签", 400);
         }
     }
 
@@ -923,9 +960,16 @@ public class MarketStore {
         if (names == null || names.isEmpty()) {
             throw new ApiException("VALIDATION_ERROR", "roles 必须是非空数组", 422);
         }
+        List<String> normalized = new ArrayList<>(names);
+        if (normalized.contains("admin") && !normalized.contains("normal_user")) {
+            normalized.add("normal_user");
+        }
         List<String> before = roles(userId);
+        if (before.contains("admin") && !normalized.contains("admin") && countAdmins() <= 1) {
+            throw new ApiException("LAST_ADMIN_PROTECTED", "不能移除最后一个管理员", 409);
+        }
         List<Long> roleIds = new ArrayList<>();
-        for (String name : names) {
+        for (String name : normalized) {
             List<Long> found = jdbc.queryForList("SELECT id FROM roles WHERE name = ?", Long.class, name);
             if (found.isEmpty()) {
                 throw new ApiException("VALIDATION_ERROR", "包含不存在的角色", 422);
@@ -936,13 +980,13 @@ public class MarketStore {
         for (Long roleId : roleIds) {
             jdbc.update("INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)", userId, roleId);
         }
-        String userType = names.contains("admin") ? "admin" : names.contains("agent_service") ? "agent_service" : "normal_user";
+        String userType = normalized.contains("admin") ? "admin" : normalized.contains("agent_service") ? "agent_service" : "normal_user";
         jdbc.update("UPDATE users SET user_type = ?, updated_at = ? WHERE id = ?", userType, now(), userId);
         jdbc.update("""
                 INSERT INTO operation_logs
                 (actor_id, actor_snapshot, action, resource_type, resource_id, before_json, after_json, created_at)
                 VALUES (?, ?, 'user.roles.update', 'user', ?, ?, ?, ?)
-                """, actorId, actorName, String.valueOf(userId), String.join(",", before), String.join(",", names), now());
+                """, actorId, actorName, String.valueOf(userId), String.join(",", before), String.join(",", normalized), now());
         return userPublic(findUser(userId), true);
     }
 

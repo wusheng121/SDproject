@@ -13,7 +13,8 @@ class ApiGatewayTest {
     void recommendationVisionAndAssistantGoToThePythonDataServer() {
         assertTrue(DataProxy.isDataPath("/api/recommendations"));
         assertTrue(DataProxy.isDataPath("/api/recommendations/similar/3"));
-        assertTrue(DataProxy.isDataPath("/api/v1/assistant/chat"));
+        assertFalse(DataProxy.isDataPath("/api/v1/assistant/chat"));
+        assertTrue(DataProxy.isDataPath("/api/ai/assistant-reply"));
         assertTrue(DataProxy.isDataPath("/api/ai/listing-recognize"));
         assertTrue(DataProxy.isDataPath("/api/products/price-reference"));
     }

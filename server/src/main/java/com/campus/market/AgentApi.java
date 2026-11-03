@@ -23,12 +23,17 @@ public class AgentApi {
     private final JdbcTemplate jdbc;
     private final MarketStore store;
     private final CampusProperties properties;
+    private final SkillRegistry skills;
+    private final AgentAuth agentAuth;
     private final RestClient dataClient;
 
-    public AgentApi(JdbcTemplate jdbc, MarketStore store, CampusProperties properties) {
+    public AgentApi(JdbcTemplate jdbc, MarketStore store, CampusProperties properties,
+                    SkillRegistry skills, AgentAuth agentAuth) {
         this.jdbc = jdbc;
         this.store = store;
         this.properties = properties;
+        this.skills = skills;
+        this.agentAuth = agentAuth;
         String root = properties.getDataUrl();
         if (root.endsWith("/")) {
             root = root.substring(0, root.length() - 1);
@@ -61,23 +66,213 @@ public class AgentApi {
         Map<String, Object> params = body.get("params") instanceof Map<?, ?> raw ? stringMap(raw) : Map.of();
         String scope = "recommendation_query".equals(skill) ? "recommendation:query" : "product:view";
         Map<String, Object> agent = requireKey(request, scope);
-        Map<String, Object> data = switch (skill) {
-            case "product_query", "nl_filter" -> Map.of("skill", skill, "items", filterProducts(skill, params));
-            case "recommendation_query" -> {
-                Long userId = params.get("user_id") == null ? null : MarketStore.num(params.get("user_id"));
-                int limit = params.get("limit") == null ? 6 : (int) MarketStore.num(params.get("limit"));
-                long target = userId == null ? MarketStore.num(agent.get("id")) : userId;
-                yield recommend(target, limit);
-            }
-            case "product_recognize" -> recognizeImage(params);
-            default -> throw new ApiException("VALIDATION_ERROR", "未知的 skill", 422);
-        };
+        if (!skills.isPublished(skill)) {
+            throw new ApiException("SKILL_DISABLED", "Skill 不存在或已禁用", 403);
+        }
+        Map<String, Object> data = executeSkill(skill, params, MarketStore.num(agent.get("id")));
         audit(agent, "agent.skill." + skill, "skill", skill);
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("code", 0);
         response.put("message", "ok");
         response.put("data", data);
         return ResponseEntity.ok(response);
+    }
+
+    public Map<String, Object> executeSkill(String skill, Map<String, Object> params, long actorId) {
+        return switch (skill) {
+            case "product_query", "nl_filter" -> Map.of("skill", skill, "items", filterProducts(skill, params));
+            case "recommendation_query" -> {
+                Long userId = params.get("user_id") == null ? null : MarketStore.num(params.get("user_id"));
+                int limit = params.get("limit") == null ? 6 : (int) MarketStore.num(params.get("limit"));
+                long target = userId == null ? actorId : userId;
+                yield recommend(target, limit);
+            }
+            case "product_detail" -> productDetail(params);
+            case "product_compare" -> compareProducts(params);
+            case "product_advice" -> productAdvice(params);
+            case "seller_questions" -> sellerQuestions(params);
+            case "product_recognize" -> recognizeImage(params);
+            default -> throw new ApiException("VALIDATION_ERROR", "未知的 skill", 422);
+        };
+    }
+
+    private Map<String, Object> productDetail(Map<String, Object> params) {
+        long productId = productId(params);
+        Map<String, Object> row = store.product(productId);
+        if (row == null) {
+            throw new ApiException("NOT_FOUND", "商品不存在", 404);
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("skill", "product_detail");
+        data.put("product", store.productView(row, true));
+        data.put("reviews", reviews(productId));
+        return data;
+    }
+
+    private Map<String, Object> productAdvice(Map<String, Object> params) {
+        Map<String, Object> detail = productDetail(params);
+        Map<String, Object> product = map(detail.get("product"));
+        double price = number(product.get("price")) == null ? 0 : number(product.get("price"));
+        int conditionScore = conditionScore(MarketStore.str(product.get("condition")));
+        List<String> pros = new ArrayList<>();
+        List<String> risks = new ArrayList<>();
+        List<String> missing = new ArrayList<>();
+
+        String productName = MarketStore.str(product.get("name"));
+        if (!MarketStore.str(product.get("brand")).isBlank()) {
+            pros.add("品牌信息明确：" + MarketStore.str(product.get("brand")));
+        } else if (productName.isBlank()) {
+            missing.add("品牌或具体型号未填写");
+        }
+        if (conditionScore >= 95) {
+            pros.add("成色较好，适合对品相要求较高的买家");
+        } else if (conditionScore > 0) {
+            risks.add("成色为" + product.get("condition") + "，建议确认实际磨损");
+        }
+        if (!MarketStore.str(product.get("defect_description")).isBlank()) {
+            risks.add("卖家填写了瑕疵：" + MarketStore.str(product.get("defect_description")));
+        } else {
+            missing.add("未填写瑕疵说明，建议向卖家确认");
+        }
+        if (!MarketStore.str(product.get("trade_method")).isBlank()) {
+            pros.add("交易方式：" + MarketStore.str(product.get("trade_method")));
+        } else {
+            missing.add("交易方式未填写");
+        }
+        if (!MarketStore.str(product.get("trade_location")).isBlank()) {
+            pros.add("交易地点：" + MarketStore.str(product.get("trade_location")));
+        } else {
+            missing.add("交易地点未填写");
+        }
+        if (price > 0) {
+            risks.add("标价 ¥" + price + "，请结合同类成交价判断是否合理");
+        }
+
+        List<String> questions = questions(product);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("skill", "product_advice");
+        data.put("product_id", product.get("id"));
+        data.put("summary", "这件商品发布信息" + (missing.isEmpty() ? "较完整" : "还有信息缺失") + "，建议先确认瑕疵、配件和交易方式。");
+        data.put("pros", pros);
+        data.put("risks", risks);
+        data.put("missing", missing);
+        data.put("questions", questions);
+        data.put("script", script(questions));
+        data.put("condition_score", conditionScore);
+        return data;
+    }
+
+    private Map<String, Object> sellerQuestions(Map<String, Object> params) {
+        Map<String, Object> advice = productAdvice(params);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("skill", "seller_questions");
+        data.put("product_id", advice.get("product_id"));
+        data.put("questions", advice.get("questions"));
+        data.put("script", advice.get("script"));
+        return data;
+    }
+
+    private Map<String, Object> compareProducts(Map<String, Object> params) {
+        List<Long> ids = new ArrayList<>();
+        Object raw = params.get("product_ids");
+        if (raw instanceof List<?> list) {
+            for (Object item : list) {
+                ids.add(MarketStore.num(item));
+            }
+        }
+        if (ids.isEmpty() && params.get("product_id") != null) {
+            ids.add(MarketStore.num(params.get("product_id")));
+        }
+        if (ids.isEmpty()) {
+            throw new ApiException("VALIDATION_ERROR", "请提供 product_ids", 422);
+        }
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (Long id : ids.subList(0, Math.min(ids.size(), 5))) {
+            Map<String, Object> detail = productDetail(Map.of("product_id", id));
+            Map<String, Object> product = map(detail.get("product"));
+            double price = number(product.get("price")) == null ? 0 : number(product.get("price"));
+            int score = conditionScore(MarketStore.str(product.get("condition")));
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("product_id", product.get("id"));
+            item.put("name", product.get("name"));
+            item.put("price", price);
+            item.put("condition", product.get("condition"));
+            item.put("condition_score", score);
+            item.put("value_score", price <= 0 ? 0 : Math.round(score / price * 10000.0) / 100.0);
+            item.put("defect_description", product.get("defect_description"));
+            item.put("brand", product.get("brand"));
+            item.put("trade_method", product.get("trade_method"));
+            items.add(item);
+        }
+        Map<String, Object> best = items.stream()
+                .max((a, b) -> Double.compare(number(a.get("value_score")), number(b.get("value_score"))))
+                .orElse(null);
+        String recommendation = best == null ? "暂无可对比商品"
+                : "当前候选中，" + best.get("name") + " 的成色/价格组合相对更优；仍建议确认瑕疵和配件。";
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("skill", "product_compare");
+        data.put("items", items);
+        data.put("best_value_product_id", best == null ? null : best.get("product_id"));
+        data.put("recommendation", recommendation);
+        return data;
+    }
+
+    private List<Map<String, Object>> reviews(long productId) {
+        return jdbc.queryForList("""
+                SELECT r.id, r.score, r.comment, r.created_at, u.username
+                FROM reviews r LEFT JOIN users u ON u.id = r.user_id
+                WHERE r.product_id = ? ORDER BY r.id DESC LIMIT 20
+                """, productId);
+    }
+
+    private static long productId(Map<String, Object> params) {
+        if (params.get("product_id") == null) {
+            throw new ApiException("VALIDATION_ERROR", "请提供 product_id", 422);
+        }
+        return MarketStore.num(params.get("product_id"));
+    }
+
+    private static int conditionScore(String condition) {
+        return switch (condition) {
+            case "全新" -> 100;
+            case "九五新" -> 95;
+            case "九成新" -> 90;
+            case "八成新" -> 80;
+            case "七成新" -> 70;
+            default -> 0;
+        };
+    }
+
+    private static List<String> questions(Map<String, Object> product) {
+        List<String> questions = new ArrayList<>();
+        if (MarketStore.str(product.get("defect_description")).isBlank()) {
+            questions.add("商品有没有明显的划痕、磕碰或其他瑕疵？可以拍一下细节吗？");
+        }
+        if (MarketStore.str(product.get("brand")).isBlank() && MarketStore.str(product.get("name")).isBlank()) {
+            questions.add("具体品牌和型号是什么？");
+        }
+        if (MarketStore.str(product.get("trade_method")).isBlank()) {
+            questions.add("支持当面验机/验货吗？");
+        }
+        questions.add("配件、包装和购买凭证是否齐全？");
+        questions.add("有没有维修、换件或进水记录？");
+        String category = MarketStore.str(product.get("categories"));
+        if (category.contains("手机") || category.contains("平板") || category.contains("电脑")) {
+            questions.add("电池健康度或实际续航大概是多少？");
+        }
+        return questions;
+    }
+
+    private static String script(List<String> questions) {
+        if (questions.isEmpty()) {
+            return "你好，我对这件商品感兴趣，方便确认一下具体情况吗？";
+        }
+        return "你好，我对这件商品感兴趣，想确认一下：" + String.join("；", questions.subList(0, Math.min(3, questions.size()))) + "。谢谢！";
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> map(Object value) {
+        return value instanceof Map<?, ?> raw ? (Map<String, Object>) raw : Map.of();
     }
 
     private Map<String, Object> recognizeImage(Map<String, Object> params) {
@@ -147,27 +342,7 @@ public class AgentApi {
     }
 
     private Map<String, Object> requireKey(HttpServletRequest request, String scope) {
-        String raw = request.getHeader("X-API-Key");
-        if (raw == null || !raw.startsWith("cmk_") || !raw.contains(".")) {
-            throw new ApiException("AUTH_INVALID_API_KEY", "API Key 无效或权限不足", 401);
-        }
-        String prefix = raw.substring(0, raw.indexOf('.'));
-        List<Map<String, Object>> keys = jdbc.queryForList(
-                "SELECT * FROM api_keys WHERE key_prefix = ? AND revoked_at IS NULL", prefix);
-        if (keys.isEmpty() || !Tokens.sha256(raw).equals(String.valueOf(keys.get(0).get("key_hash")))) {
-            throw new ApiException("AUTH_INVALID_API_KEY", "API Key 无效或权限不足", 401);
-        }
-        Map<String, Object> key = keys.get(0);
-        String scopes = key.get("scopes") == null ? "" : String.valueOf(key.get("scopes"));
-        if (!List.of(scopes.split(",")).contains(scope)) {
-            throw new ApiException("AUTH_INVALID_API_KEY", "API Key 无效或权限不足", 401);
-        }
-        Map<String, Object> user = store.findUser(MarketStore.num(key.get("user_id")));
-        if (user == null || !MarketStore.flag(user.get("is_active"))) {
-            throw new ApiException("AUTH_INVALID_API_KEY", "API Key 无效或权限不足", 401);
-        }
-        jdbc.update("UPDATE api_keys SET last_used_at = ? WHERE id = ?", LocalDateTime.now().format(STAMP), MarketStore.num(key.get("id")));
-        return user;
+        return agentAuth.require(request, scope);
     }
 
     private void audit(Map<String, Object> agent, String action, String type, String resourceId) {

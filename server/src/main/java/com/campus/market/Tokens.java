@@ -16,6 +16,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Date;
 import java.util.HexFormat;
+import java.util.List;
 
 @Component
 public class Tokens {
@@ -40,6 +41,10 @@ public class Tokens {
     }
 
     public String accessToken(long userId, String userType) {
+        return accessToken(userId, userType, List.of(), List.of());
+    }
+
+    public String accessToken(long userId, String userType, List<String> roles, List<String> permissions) {
         Instant now = Instant.now();
         SecretKey key = Keys.hmacShaKeyFor(pad(properties.getJwtSecret()));
         return Jwts.builder()
@@ -47,11 +52,13 @@ public class Tokens {
                 .subject(Long.toString(userId))
                 .claim("type", "access")
                 .claim("user_type", userType)
+                .claim("roles", roles)
+                .claim("permissions", permissions)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plusSeconds(properties.getAccessTtlSeconds())))
                 .issuer(properties.getJwtIssuer())
                 .audience().add(properties.getJwtAudience()).and()
-                .signWith(key)
+                .signWith(key, Jwts.SIG.HS256)
                 .compact();
     }
 

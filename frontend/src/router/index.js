@@ -5,11 +5,15 @@ import Search from "../views/Search.vue";
 import ProductDetail from "../views/ProductDetail.vue";
 import Register from "../views/Register.vue";
 import Login from "../views/Login.vue";
+import ForgotPassword from "../views/ForgotPassword.vue";
+import ResetPassword from "../views/ResetPassword.vue";
+import VerifyEmail from "../views/VerifyEmail.vue";
+import ChangePassword from "../views/ChangePassword.vue";
 import Favorites from "../views/Favorites.vue";
 import UserCenter from "../views/UserCenter.vue";
 import ProductPublish from "../views/ProductPublish.vue";
 import AdminPanel from "../views/AdminPanel.vue";
-import Assistant from "../views/Assistant.vue";
+import UnifiedAssistant from "../views/UnifiedAssistant.vue";
 import RecommendationTest from "../views/RecommendationTest.vue";
 import Cart from "../views/Cart.vue";
 import Orders from "../views/Orders.vue";
@@ -34,11 +38,24 @@ const routes = [
   },
   { path: "/register", name: "Register", component: Register },
   { path: "/login", name: "Login", component: Login },
+  { path: "/forgot-password", name: "ForgotPassword", component: ForgotPassword },
+  { path: "/reset-password", name: "ResetPassword", component: ResetPassword },
+  { path: "/verify-email", name: "VerifyEmail", component: VerifyEmail },
+  {
+    path: "/change-password",
+    name: "ChangePassword",
+    component: ChangePassword,
+    meta: { requiresAuth: true }
+  },
   {
     path: "/assistant",
     name: "Assistant",
-    component: Assistant,
+    component: UnifiedAssistant,
     meta: { requiresAuth: true }
+  },
+  {
+    path: "/agent-workbench",
+    redirect: { path: "/assistant", query: { mode: "complex" } }
   },
   {
     path: "/favorites",

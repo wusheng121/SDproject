@@ -1,6 +1,7 @@
 from routes.admin_routes import admin_bp
-from routes.assistant_routes import assistant_bp
 from routes.agent_routes import agent_bp
+from routes.assistant_ai_routes import assistant_ai_bp
+from routes.assistant_routes import assistant_bp
 from routes.auth_routes import auth_bp
 from routes.behavior_routes import behavior_bp
 from routes.behavior_v1_routes import behavior_v1_bp
@@ -24,7 +25,7 @@ def register_blueprints(app):
 
 
 def register_data_blueprints(app):
-    """推荐、识图和购物助手。业务接口由 Java 负责，这里不再注册。"""
-    app.register_blueprint(assistant_bp)
+    """推荐、识图和工作区。业务接口由 Java 主服务处理，不注册。"""
+    app.register_blueprint(assistant_ai_bp)
     app.register_blueprint(product_bp)
     app.register_blueprint(recommendation_bp)

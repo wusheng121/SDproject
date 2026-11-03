@@ -18,7 +18,8 @@ export const useUserStore = defineStore("user", {
   }),
   getters: {
     username: (state) => state.profile?.username || "",
-    isAdmin: (state) => state.profile?.user_type === "admin",
+    isAdmin: (state) =>
+      state.profile?.user_type === "admin" || (state.profile?.roles || []).includes("admin"),
     permissions: (state) => state.profile?.permissions || []
   },
   actions: {

@@ -9,7 +9,7 @@ sys.path.insert(0, backend_dir)
 
 from flask import Flask
 from extensions import db
-from models import User, Product, Category, ProductCategory, Role, Permission, UserRole, RolePermission
+from models import Agent, AgentSkill, Skill, User, Product, Category, ProductCategory, Role, Permission, UserRole, RolePermission
 from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
 
@@ -54,6 +54,9 @@ def main():
             ("user:manage", "管理用户"),
             ("recommendation:query", "查询推荐"),
             ("admin:log", "查看操作日志"),
+            ("skill:view", "查看 Skill"),
+            ("skill:manage", "管理 Skill"),
+            ("skill:test", "测试 Skill"),
         ]
         
         perm_map = {}
@@ -73,7 +76,7 @@ def main():
             },
             "admin": {
                 "description": "平台管理员",
-                "permissions": ["product:view", "product:audit", "user:manage", "admin:log", "recommendation:query"]
+                "permissions": ["product:view", "product:audit", "user:manage", "admin:log", "recommendation:query", "skill:view", "skill:manage", "skill:test"]
             },
             "agent_service": {
                 "description": "Agent服务账号",

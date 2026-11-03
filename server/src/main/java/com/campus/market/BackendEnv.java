@@ -27,6 +27,11 @@ public final class BackendEnv {
         put("FRONTEND_URL", values);
         put("SMTP_HOST", values);
         put("SMTP_PORT", values);
+        put("SMTP_USER", values);
+        put("SMTP_PASSWORD", values);
+        put("SMTP_AUTH", values);
+        put("SMTP_STARTTLS", values);
+        put("SMTP_SSL", values);
         put("MAIL_FROM", values);
         put("REDIS_URL", values);
         put("RABBITMQ_HOST", values);
@@ -37,6 +42,9 @@ public final class BackendEnv {
         put("CACHE_LOCAL_TTL_SECONDS", values);
         put("CACHE_REDIS_TTL_SECONDS", values);
         put("CACHE_LOCAL_MAX_ITEMS", values);
+        put("BOOTSTRAP_ADMIN_USERNAME", values);
+        put("BOOTSTRAP_ADMIN_EMAIL", values);
+        put("BOOTSTRAP_ADMIN_PASSWORD", values);
         applyDatabase(values.get("DATABASE_URL"));
     }
 

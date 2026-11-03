@@ -9,10 +9,23 @@ spring:
     multipart:
       enabled: false
   datasource:
-    url: jdbc:mysql://127.0.0.1:3307/campus_market?characterEncoding=UTF-8&serverTimezone=UTC
-    username: campus
-    password: campus
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://127.0.0.1:3407/campus_market?characterEncoding=UTF-8&serverTimezone=UTC}
+    username: ${SPRING_DATASOURCE_USERNAME:campus}
+    password: ${SPRING_DATASOURCE_PASSWORD:campus}
     driver-class-name: com.mysql.cj.jdbc.Driver
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
+    default-encoding: UTF-8
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.ssl.enable: ${SMTP_SSL:false}
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
   rabbitmq:
     host: ${RABBITMQ_HOST:127.0.0.1}
     port: ${RABBITMQ_PORT:5672}
@@ -28,7 +41,7 @@ spring:
           initial-interval: 1000
 
 campus:
-  data-url: http://127.0.0.1:5001
+  data-url: ${DATA_URL:http://127.0.0.1:5001}
   jwt-secret: ${SECRET_KEY:dev-only-change-me-0123456789abcdef}
   jwt-issuer: ${JWT_ISSUER:campus-market}
   jwt-audience: ${JWT_AUDIENCE:campus-market-web}

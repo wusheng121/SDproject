@@ -427,6 +427,8 @@ def converse(
     session_id: str | None = None,
     filename: str | None = None,
     image_data_url: str | None = None,
+    history: list | None = None,
+    slots: dict | None = None,
 ) -> dict:
     text = (message or "").strip()
     filename = (filename or "").strip()
@@ -434,10 +436,19 @@ def converse(
     if image_data_url and not valid_image_data_url(image_data_url):
         raise ValueError("图片只支持 4MB 以内的 JPEG、PNG、GIF、WebP")
     if not text and not filename and not image_data_url:
-        raise ValueError("请输入一句话，或上传一张图片")
+        raise ValueError("请先说一句话，或上传一张图片")
 
-    row = _load(user, session_id)
-    slots = _slots(row)
+    if history is not None or slots is not None:
+        row = AgentDialogue(
+            id=secrets.token_hex(16),
+            user_id=user.id,
+            slots_json=json.dumps(slots or {}, ensure_ascii=False),
+            messages_json=json.dumps(history or [], ensure_ascii=False),
+        )
+        slots = _slots(row)
+    else:
+        row = _load(user, session_id)
+        slots = _slots(row)
     recognition = None
     refused_early = bool(text) and any(word in text for word in WRITE_WORDS)
     if image_data_url and api_key() and not refused_early:

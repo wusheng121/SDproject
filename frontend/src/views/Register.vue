@@ -104,17 +104,6 @@
 
             <div class="form-group">
               <label class="form-label">
-                <span class="label-icon">🪪</span>
-                <span>注册身份</span>
-              </label>
-              <div class="role-choices">
-                <label><input v-model="form.login_role" type="radio" value="normal_user" /> 普通用户</label>
-                <label><input v-model="form.login_role" type="radio" value="admin" /> 管理员</label>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">
                 <span class="label-icon">🔢</span>
                 <span>验证码</span>
               </label>
@@ -164,8 +153,7 @@ const form = reactive({
   phone: "",
   password: "",
   captcha_id: "",
-  captcha_code: "",
-  login_role: "normal_user"
+  captcha_code: ""
 });
 
 async function loadCaptcha() {
@@ -206,7 +194,6 @@ async function onSubmit() {
     const resp = await apiRegister(form);
     if (resp?.status === 201) {
       ElMessage.success("注册成功，请登录");
-      ElMessage.success("注册成功，请用刚才选择的身份登录");
       setTimeout(() => {
         router.push("/login");
       }, 1000);

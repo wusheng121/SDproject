@@ -1,11 +1,15 @@
 """商品相关路由 - 从 movie_routes.py 改造而来"""
-from flask import Blueprint, request
+import hmac
+import json
+
+from flask import Blueprint, current_app, request
 from sqlalchemy import func, or_
 
 from auth import current_user, login_required
 from extensions import db
 from models import BehaviorEvent, Category, Product, ProductCategory, UserBehavior
 from services.cache_store import read_through
+from services.deepseek_client import DeepSeekError, complete
 from services.listing_vision import ListingVisionError, recognize_listing
 from services.market_signals import price_reference as deal_price_reference
 from services.nl_filter import parse_nl
@@ -470,15 +474,18 @@ def _optional_text(data, key, max_length):
 @login_required
 def publish_product(user):
     data = request.get_json(silent=True) or {}
-    name = _optional_text(data, "name", 200)
+    name = _optional_text(data, "name", 80)
     condition = _optional_text(data, "condition", 20)
     category_name = _optional_text(data, "category", 50)
+    description = _optional_text(data, "description", 1000)
     try:
         price = float(data.get("price"))
     except (TypeError, ValueError):
         price = 0
     if not name or not category_name or condition not in CONDITION_RANKS or price <= 0:
         return err("请填写商品名称、品类、有效价格和成色", code=40001, http_status=400)
+    if not description:
+        return err("商品描述不能为空", code=40001, http_status=400)
 
     category = Category.query.filter_by(name=category_name).first()
     if not category:
@@ -493,7 +500,7 @@ def publish_product(user):
 
     product = Product(
         name=name,
-        description=_optional_text(data, "description", 4000),
+        description=description,
         price=price,
         condition=condition,
         brand=_optional_text(data, "brand", 100),
@@ -511,3 +518,62 @@ def publish_product(user):
     db.session.add(product)
     db.session.commit()
     return ok({"id": product.id, "status": product.status}, message="商品已提交审核")
+
+
+@product_bp.post("/ai/intent")
+def ai_intent():
+    supplied = request.headers.get("X-Internal-Token", "")
+    expected = current_app.config["SECRET_KEY"]
+    if not supplied or not hmac.compare_digest(supplied, expected):
+        return err("无权访问内部意图识别接口", code=40301, http_status=403)
+
+    data = request.get_json(silent=True) or {}
+    message = str(data.get("message") or "").strip()[:500]
+    if not message:
+        return err("message 不能为空", code=40001, http_status=400)
+
+    fallback = _rule_intent(message)
+    try:
+        text = complete([
+            {
+                "role": "system",
+                "content": (
+                    "你是校园二手交易平台的意图分类器。只输出 JSON，不要解释。"
+                    "字段 intent 只能是 product/recommendation/trade/user，"
+                    "sub_agent 只能是 product_agent/recommendation_agent/trade_agent/user_agent，"
+                    "skill 只能是 product_query/nl_filter/recommendation_query 或 null。"
+                ),
+            },
+            {"role": "user", "content": message},
+        ])
+        parsed = json.loads(text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip())
+        intent = parsed.get("intent")
+        sub_agent = parsed.get("sub_agent")
+        skill = parsed.get("skill")
+        if intent in {"product", "recommendation", "trade", "user"}:
+            mapping = {
+                "product": "product_agent",
+                "recommendation": "recommendation_agent",
+                "trade": "trade_agent",
+                "user": "user_agent",
+            }
+            fallback = {
+                "intent": intent,
+                "sub_agent": sub_agent if sub_agent in mapping.values() else mapping[intent],
+                "skill": skill if skill in {"product_query", "nl_filter", "recommendation_query"} else fallback["skill"],
+                "source": "llm",
+            }
+    except (DeepSeekError, ValueError, TypeError, json.JSONDecodeError):
+        pass
+    return ok(fallback)
+
+
+def _rule_intent(message: str) -> dict:
+    if any(word in message for word in ("推荐", "适合", "喜欢", "类似", "猜你")):
+        return {"intent": "recommendation", "sub_agent": "recommendation_agent",
+                "skill": "recommendation_query", "source": "rule"}
+    if any(word in message for word in ("订单", "购物车", "买了", "支付", "下单")):
+        return {"intent": "trade", "sub_agent": "trade_agent", "skill": None, "source": "rule"}
+    if any(word in message for word in ("我的", "资料", "偏好", "账号", "收藏")):
+        return {"intent": "user", "sub_agent": "user_agent", "skill": None, "source": "rule"}
+    return {"intent": "product", "sub_agent": "product_agent", "skill": "nl_filter", "source": "rule"}

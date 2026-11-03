@@ -23,8 +23,9 @@ def send_mail(to: str, subject: str, text: str) -> bool:
     message["Subject"] = subject
     message.set_content(text)
 
-    with smtplib.SMTP(host, current_app.config.get("SMTP_PORT", 1025), timeout=10) as smtp:
-        if current_app.config.get("SMTP_USE_TLS"):
+    smtp_class = smtplib.SMTP_SSL if current_app.config.get("SMTP_SSL") else smtplib.SMTP
+    with smtp_class(host, current_app.config.get("SMTP_PORT", 1025), timeout=10) as smtp:
+        if current_app.config.get("SMTP_USE_TLS") and not current_app.config.get("SMTP_SSL"):
             smtp.starttls()
         if current_app.config.get("SMTP_USER"):
             smtp.login(
