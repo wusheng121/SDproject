@@ -1,347 +1,486 @@
 # 校园二手交易平台
 
-AI 拍照识物与智能推荐的校园二手交易平台，采用 Vue 3 + Flask + MySQL + Redis 的前后端分离架构。
+校园二手交易平台，当前采用：
+
+- 前端：Vue 3 + Element Plus + Vite
+- 主服务：Java Spring Boot，端口 8080
+- 数据服务：Python Flask，端口 5001
+- 数据库：MySQL，端口 3407
+- 缓存与消息：Redis、RabbitMQ
+- 搜索：Elasticsearch
 
 ## 目录
 
-- `backend/`：Flask API、认证会话、RBAC、管理后台接口、Alembic 迁移
-- `frontend/`：Vue 3 + Element Plus + Vite
-- `docs/`：需求、实现 Schema、OpenAPI、ADR 与运维文档
-- `docs/README.md`：文档索引与权威层级
-- `docker-compose.yml`：本地 MySQL、Redis、MailHog、后端、前端
+```text
+backend/       Python 数据服务、Alembic 迁移、演示数据
+server/        Java Spring Boot 主服务
+frontend/      Vue 3 前端
+scripts/       本地启动脚本
+docs/          项目文档
+```
+
+## 端口
+
+| 服务 | 端口 |
+|---|---:|
+| MySQL | 3407 |
+| Redis | 6379 |
+| RabbitMQ | 5672 |
+| RabbitMQ 管理台 | 15672 |
+| Elasticsearch | 9200 |
+| Java 主服务 | 8080 |
+| Python 数据服务 | 5001 |
+| 前端开发服务器 | 5173 |
+
+> Windows 当前排除了 `3307-3406` 端口范围，所以本项目使用 MySQL `3407`，不要再改回 3307。
 
 ## 环境要求
 
+- Java 21+
+- Maven 3.9+
 - Python 3.12+
 - Node.js 18+ 或 20+
-- MySQL 8.0+
-- Redis 7+
-- Docker Desktop。用它启动同样的 MySQL 和 Redis，分布式缓存连的就是这个 Redis。没启动时程序仍能跑，只使用本进程里的本地缓存。
+- MySQL 8.0+ 或 9.x
+- Docker Desktop（Redis、RabbitMQ、Elasticsearch）
 
-Windows PowerShell 如果提示 `npm.ps1 cannot be loaded`，统一使用 `npm.cmd` 代替 `npm`。
-
-## 环境变量
-
-后端配置位于 `backend/.env`，可从 `backend/.env.example` 复制：
+Windows PowerShell 下如果 `npm.ps1` 被拦截，统一使用：
 
 ```powershell
-cd backend
-Copy-Item .env.example .env
-```
-
-主要配置：
-
-| 变量 | 说明 | 示例 |
-|---|---|---|
-| `APP_ENV` | 运行环境 | `development` / `testing` / `production` |
-| `SECRET_KEY` | JWT/会话签名密钥，生产必须至少 32 字节 | 随机 hex 字符串 |
-| `DATABASE_URL` | MySQL 连接串 | `mysql+pymysql://campus:campus@127.0.0.1:3307/campus_market?charset=utf8mb4` |
-| `REDIS_URL` | Redis 连接串。宿主机用 `127.0.0.1:6379`，Docker 容器内用 `redis://redis:6379/0` | `redis://127.0.0.1:6379/0` |
-| `RATELIMIT_STORAGE_URI` | 限流存储 | `redis://127.0.0.1:6379/1` |
-| `CACHE_LOCAL_TTL_SECONDS` | 本进程缓存过期秒数 | `20` |
-| `CACHE_REDIS_TTL_SECONDS` | Redis 缓存过期秒数 | `120` |
-| `CORS_ORIGINS` | 允许的前端源，逗号分隔 | `http://localhost:5173,http://127.0.0.1:5173` |
-| `FRONTEND_URL` | 邮件链接使用的前端地址 | `http://localhost:5173` |
-| `JWT_ACCESS_TTL_SECONDS` | Access Token 有效期 | `900` |
-| `JWT_REFRESH_TTL_SECONDS` | Refresh Token 有效期 | `2592000` |
-| `BCRYPT_COST` | BCrypt 成本 | 生产 `12` |
-| `PHONE_ENC_KEY` | 手机号加密密钥 | Fernet key |
-| `PHONE_HASH_KEY` | 手机号盲索引 HMAC 密钥 | 随机 hex 字符串 |
-| `REFRESH_COOKIE_SECURE` | 生产 HTTPS 下设为 `true` | `false`（本地） |
-| `REFRESH_COOKIE_SAMESITE` | Cookie SameSite | `Lax` |
-| `SMTP_HOST` / `SMTP_PORT` | 邮件服务 | 本地 MailHog：`127.0.0.1:1025` |
-| `LOG_LEVEL` | 日志级别 | `INFO` |
-| `SENTRY_DSN` | Sentry DSN，可选 | 空 |
-
-生成密钥：
-
-```powershell
-python -c "import secrets; print(secrets.token_hex(32))"
-python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-```
-
-`SECRET_KEY` 和 `PHONE_HASH_KEY` 使用第一行输出；`PHONE_ENC_KEY` 使用第二行输出。
-
-### 前端环境变量
-
-前端配置位于 `frontend/.env`，可从 `frontend/.env.example` 复制：
-
-```powershell
-cd frontend
-Copy-Item .env.example .env
-```
-
-| 变量 | 说明 | 本地示例 |
-|---|---|---|
-| `VITE_API_BASE_URL` | 后端 API 根地址 | `http://127.0.0.1:5000/api` |
-
-本地开发也可以不创建该文件，Vite 会通过 `vite.config.js` 的 `/api` 代理访问 `http://127.0.0.1:5000`。
-
-## 本地部署
-
-### 方式一：Docker Compose 全栈
-
-确保 Docker Desktop 已启动，且 `docker version` 能正常返回：
-
-```powershell
-# 在克隆下来的仓库根目录执行
-docker compose up --build
-```
-
-服务地址：
-
-- 前端：http://localhost:5173
-- 后端：http://localhost:5000
-- 健康检查：http://localhost:5000/health/ready
-- MailHog：http://localhost:8025
-
-Compose 中 MySQL 映射到 `127.0.0.1:3307`，避免占用本机 3306。后端容器启动时会执行迁移并写入演示数据。
-
-常用命令：
-
-```powershell
-docker compose ps
-docker compose logs -f backend
-docker compose logs -f frontend
-docker compose down
-docker compose down -v   # 同时删除 MySQL 数据卷，谨慎使用
-```
-
-### 方式二：基础服务用 Docker，前后端在宿主机运行（推荐开发）
-
-这种方式支持后端自动重载和前端 Vite HMR。
-
-1. 启动基础服务：
-
-```powershell
-# 在克隆下来的仓库根目录执行
-docker compose up -d mysql redis mailhog
-```
-
-2. 启动后端：
-
-```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt -r requirements-dev.txt
-Copy-Item .env.example .env
-flask --app app db upgrade
-flask --app app seed-demo
-flask --app app run --debug --port 5000
-```
-
-使用 `flask --app app run --debug` 才会开启自动重载；`python app.py` 是关闭 debug 的启动方式。
-
-3. 启动前端：
-
-```powershell
-cd frontend
-npm.cmd install
 npm.cmd run dev
+npm.cmd run build
 ```
 
-前端 Vite 会把 `/api` 代理到 `http://127.0.0.1:5000`。
+## 一、从 0 启动
 
-### 方式三：使用本机 MySQL
+### 1. 准备 MySQL
 
-将 `backend/.env` 的 `DATABASE_URL` 改为本机 MySQL，例如：
+当前推荐的数据目录：
 
 ```text
-mysql+pymysql://campus:campus@127.0.0.1:3306/campus_market?charset=utf8mb4
+D:\aWusheng\mysql-data
 ```
 
-首次需要创建数据库和用户：
+如果该目录已经存在，直接执行：
 
-```sql
-CREATE DATABASE campus_market CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+```powershell
+cd D:\aWusheng\SDproject
+powershell -ExecutionPolicy Bypass -File .\scripts\start-mysql.ps1
+```
+
+如果是全新的空目录，先初始化 MySQL：
+
+```powershell
+& "C:\Program Files\MySQL\MySQL Server 9.4\bin\mysqld.exe" `
+  --initialize-insecure `
+  --datadir=D:\aWusheng\mysql-data
+```
+
+再启动：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-mysql.ps1
+```
+
+首次创建数据库和账号：
+
+```powershell
+& "C:\Program Files\MySQL\MySQL Server 9.4\bin\mysql.exe" -P 3407 -u root -e "
+CREATE DATABASE campus_market CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER 'campus'@'%' IDENTIFIED BY 'campus';
 GRANT ALL PRIVILEGES ON campus_market.* TO 'campus'@'%';
 FLUSH PRIVILEGES;
+"
 ```
 
-然后执行迁移和 seed。
+### 2. 启动中间件
 
-## 数据库初始化与同步
-
-表结构通过 Alembic 管理，不要手动改生产表。
+只启动 Redis、RabbitMQ、Elasticsearch：
 
 ```powershell
-cd backend
-flask --app app db upgrade
+cd D:\aWusheng\SDproject
+docker compose up -d redis rabbitmq elasticsearch
+docker compose ps
 ```
 
-演示数据：
+不要同时启动 Compose 里的 MySQL，避免和本地 3407 实例冲突。
+
+### 3. 安装依赖
+
+Python：
 
 ```powershell
-flask --app app seed-demo
+cd D:\aWusheng\SDproject\backend
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
 ```
 
-当前 seed 包含：
-
-- 3 个演示账号
-- 3 个角色、12 个权限
-- 31 个品类、47 个商品
-- 商品按名称幂等插入，重复执行不会产生重复商品
-
-生产环境不执行 `seed-demo`，使用一次性管理员初始化：
+前端：
 
 ```powershell
-$env:ADMIN_USERNAME="admin"
-$env:ADMIN_EMAIL="admin@example.com"
-$env:ADMIN_PASSWORD="Admin12345"
-flask --app app bootstrap-admin
+cd D:\aWusheng\SDproject\frontend
+npm.cmd install
 ```
 
-### 协作者如何同步数据
-
-- Schema：提交 Alembic 迁移，其他成员 `git pull` 后执行 `flask db upgrade`。
-- 演示/字典数据：写入 `backend/seed/init_products.py`，提交代码后执行 `flask --app app seed-demo`。
-- 真实数据：使用 `mysqldump` 或共享开发数据库，不要提交 Git。
-
-备份：
+Java：
 
 ```powershell
-mysqldump -h 127.0.0.1 -P 3307 -u campus -pcampus campus_market > campus_market.sql
+cd D:\aWusheng\SDproject\server
+mvn -q -DskipTests package
 ```
 
-恢复：
+### 4. 配置环境变量
+
+后端配置位于：
+
+```text
+backend/.env
+```
+
+从示例复制：
 
 ```powershell
-cmd /c "mysql -h 127.0.0.1 -P 3307 -u campus -pcampus campus_market < campus_market.sql"
+cd D:\aWusheng\SDproject
+Copy-Item backend\.env.example backend\.env
 ```
 
-SQL 文件可能包含用户、手机号和行为数据，不要提交 Git。
+至少确认：
 
-## 演示账号
-
-仅开发环境：
-
-- 普通用户：`testuser / Test12345`
-- 管理员：`admin / Admin12345`
-- Agent：`agent / Agent12345`
-
-连续输错密码 5 次会锁定 15 分钟。需要解锁时可由管理员处理，或开发环境执行：
-
-```sql
-UPDATE users
-SET failed_login_count = 0, locked_until = NULL
-WHERE username = 'testuser';
+```text
+DATABASE_URL=mysql+pymysql://campus:campus@127.0.0.1:3407/campus_market?charset=utf8mb4
+REDIS_URL=redis://127.0.0.1:6379/0
+SECRET_KEY=至少32字节的随机字符串
 ```
 
-## 测试
+Java 启动时会读取 `backend/.env`，并自动连接同一个数据库。
 
-后端静态检查与单元/集成测试：
+前端默认通过 Vite 代理访问 Java 8080，一般不需要额外配置。
+
+### 5. 执行数据库迁移
 
 ```powershell
-cd backend
-ruff check app.py auth.py config.py extensions.py models.py routes utils seed tests
-pytest -q
+cd D:\aWusheng\SDproject\backend
+python -m flask --app app db upgrade
 ```
 
-使用 MySQL 测试库：
+不要用 `init_db.py` 代替 Alembic 迁移，否则可能缺少后续 Agent/Planner 表。
+
+### 6. 初始化管理员
+
+#### 方式 A：演示数据
 
 ```powershell
-$env:APP_ENV="testing"
-$env:TEST_DATABASE_URL="mysql+pymysql://campus:campus@127.0.0.1:3307/campus_market_test?charset=utf8mb4"
+cd D:\aWusheng\SDproject\backend
+python -m flask --app app seed-demo
+```
+
+会创建：
+
+```text
+普通用户：testuser / Test12345
+管理员：admin / Admin12345
+Agent：agent / Agent12345
+```
+
+这种方式默认不会强制管理员改密码。
+如果要演示首次登录强制改密，执行：
+
+```powershell
+& "C:\Program Files\MySQL\MySQL Server 9.4\bin\mysql.exe" `
+  -h 127.0.0.1 -P 3407 -u campus -pcampus campus_market `
+  -e "UPDATE users SET must_change_password=1 WHERE username='admin';"
+```
+
+#### 方式 B：正式 bootstrap 管理员
+
+先在 `backend/.env` 中配置：
+
+```text
+BOOTSTRAP_ADMIN_USERNAME=admin
+BOOTSTRAP_ADMIN_EMAIL=admin@example.com
+BOOTSTRAP_ADMIN_PASSWORD=YourPassword123
+```
+
+再初始化 RBAC 和分类：
+
+```powershell
+cd D:\aWusheng\SDproject\backend
+python -c "from app import app; from seed.init_products import seed_rbac, seed_categories; ctx=app.app_context(); ctx.push(); seed_rbac(); seed_categories(); print('rbac ready')"
+```
+
+启动 Java 后，如果系统中没有管理员，会自动创建：
+
+- 管理员账号
+- `admin + normal_user` 双角色
+- `must_change_password=1`
+
+管理员第一次登录后会跳转到 `/change-password` 强制改密。
+
+### 7. 启动 Python 数据服务
+
+另开终端：
+
+```powershell
+cd D:\aWusheng\SDproject\backend
+python data_server.py
+```
+
+### 8. 启动 Java 主服务
+
+另开终端：
+
+```powershell
+cd D:\aWusheng\SDproject\server
+java -jar target\market-server-0.1.0.jar
+```
+
+如果 Java 代码有修改：
+
+```powershell
+mvn -q -DskipTests package
+java -jar target\market-server-0.1.0.jar
+```
+
+### 9. 启动前端
+
+另开终端：
+
+```powershell
+cd D:\aWusheng\SDproject\frontend
+npm.cmd run dev
+```
+
+访问：
+
+```text
+http://127.0.0.1:5173
+```
+
+健康检查：
+
+```text
+Java:   http://127.0.0.1:8080/health/live
+Python: http://127.0.0.1:5001/health/live
+```
+
+## 二、日常正常启动
+
+数据库和中间件已经准备好时，只需要：
+
+### 1. 启动 MySQL
+
+```powershell
+cd D:\aWusheng\SDproject
+powershell -ExecutionPolicy Bypass -File .\scripts\start-mysql.ps1
+```
+
+### 2. 启动中间件
+
+```powershell
+docker compose up -d redis rabbitmq elasticsearch
+```
+
+### 3. 启动 Python
+
+```powershell
+cd D:\aWusheng\SDproject\backend
+python data_server.py
+```
+
+### 4. 启动 Java
+
+```powershell
+cd D:\aWusheng\SDproject\server
+java -jar target\market-server-0.1.0.jar
+```
+
+### 5. 启动前端
+
+```powershell
+cd D:\aWusheng\SDproject\frontend
+npm.cmd run dev
+```
+
+## 三、管理员首次登录强制改密
+
+如果管理员是 bootstrap 创建的，登录后会自动跳转：
+
+```text
+/login -> /change-password
+```
+
+当前已有管理员如果要重新演示强制改密：
+
+```powershell
+& "C:\Program Files\MySQL\MySQL Server 9.4\bin\mysql.exe" `
+  -h 127.0.0.1 -P 3407 -u campus -pcampus campus_market `
+  -e "UPDATE users SET must_change_password=1 WHERE username='admin';"
+```
+
+然后重新登录管理员账号。
+
+注意：
+
+- 修改成功后 `must_change_password` 会变回 0
+- 修改密码后管理员进入 `/admin`
+- 普通用户进入 `/`
+
+## 四、登录 500 排查
+
+登录 500 最常见原因是 MySQL 3407 没有启动。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-mysql.ps1
+```
+
+检查端口：
+
+```powershell
+Get-NetTCPConnection -LocalPort 3407 -State Listen
+```
+
+检查数据库：
+
+```powershell
+& "C:\Program Files\MySQL\MySQL Server 9.4\bin\mysql.exe" `
+  -h 127.0.0.1 -P 3407 -u campus -pcampus campus_market `
+  -e "SELECT COUNT(*) FROM users;"
+```
+
+不要使用 3307：当前 Windows 已排除 `3307-3406`。
+
+## 五、常用验证
+
+### 检查所有服务端口
+
+```powershell
+foreach ($port in 3407,6379,5672,9200,8080,5001,5173) {
+  $conn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+  if ($conn) { "$port = running" } else { "$port = stopped" }
+}
+```
+
+### 测试登录接口
+
+登录需要验证码。先访问登录页获取验证码，或请求：
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8080/api/v1/auth/captcha
+```
+
+### 重新执行迁移
+
+```powershell
+cd D:\aWusheng\SDproject\backend
+python -m flask --app app db upgrade
+```
+
+### 重新构建 Java
+
+```powershell
+cd D:\aWusheng\SDproject\server
+mvn -q -DskipTests package
+```
+
+### 重新构建前端
+
+```powershell
+cd D:\aWusheng\SDproject\frontend
+npm.cmd run build
+```
+
+如果 npm 包装器构建卡住，可使用：
+
+```powershell
+node .\node_modules\vite\bin\vite.js build --minify false
+```
+
+## 六、测试
+
+Python：
+
+```powershell
+cd D:\aWusheng\SDproject\backend
 python -m pytest -q
 ```
 
-前端生产构建：
+Java：
 
 ```powershell
-cd frontend
+cd D:\aWusheng\SDproject\server
+mvn test
+```
+
+当前预期：
+
+```text
+Python: 80 passed
+Java:   14 passed
+```
+
+前端：
+
+```powershell
+cd D:\aWusheng\SDproject\frontend
 npm.cmd run build
 ```
 
-## 认证与权限
+## 七、Agent 功能入口
 
-- 注册/登录：`/api/v1/auth/*`
-- Access Token：仅保存在内存
-- Refresh Token：HttpOnly Cookie，轮换、重放检测、支持吊销
-- RBAC：`normal_user`、`admin`、`agent_service`
-- Agent：API Key + scopes，只读
-- 手机号：加密存储、盲索引查询、接口脱敏
+前端：
 
-普通用户与 Agent 的区别：
-
-- 普通用户：Web 登录，可浏览、发布/编辑/下架自己的商品、收藏、下单、评价
-- Agent：机器账号，通过 `X-API-Key` 只读查询商品与推荐，不能写数据
-- Agent 调用会记录审计日志
-
-## 生产部署要点
-
-- 使用 Docker 镜像 + Gunicorn，不使用 Flask 开发服务器
-- 使用托管 MySQL 8 与 Redis
-- `APP_ENV=production`
-- `SECRET_KEY` 至少 32 字节
-- `REFRESH_COOKIE_SECURE=true`
-- `CORS_ORIGINS` 配置真实前端域名，禁止 `*`
-- 迁移作为发布步骤执行，不在应用启动时自动建表
-- 不执行 `seed-demo`
-- 配置 SMTP、Sentry、备份与监控
-- 发布前验证 `/health/ready`
-
-`render.yaml` 仅提供容器部署入口，真实部署仍需外接 MySQL/Redis，并配置环境变量。
-
-## 常见问题
-
-### npm 命令被 PowerShell 拦截
-
-使用：
-
-```powershell
-npm.cmd run dev
-npm.cmd run build
+```text
+/assistant     购物助手：快速问答、识图、商品分析、对比、加购、问商家
+/admin         Skill 管理、Agent 接入、Agent 会话、上下文/操作日志
 ```
 
-### Docker 命令卡住或连接失败
+Agent API Key：
 
-确认 Docker Desktop 显示 Engine running，并执行：
+- 管理员进入 `/admin`
+- 打开“Agent 接入”
+- 选择 Agent 服务账号
+- 创建 API Key
+- 完整 Key 只显示一次
 
-```powershell
-docker version
+外部 MCP：
+
+```text
+POST http://127.0.0.1:8080/api/v1/mcp
+Authorization: Bearer <Agent API Key>
 ```
 
-如果仍不可用，可以先使用本机 MySQL，或将前后端直接跑在宿主机。
+当前 MCP 只读，不支持下单、支付和写操作。
 
-### 登录后刷新页面掉登录态
+## 八、已知限制
 
-检查：
+- 微信小程序未实现
+- 旧 `agent_dialogues` 历史不迁移到新 Java 会话表
+- Planner 目前是规则 Planner，不是完整的 LLM 自由规划
+- `cart_add` 和 `seller_message` 必须用户确认
+- 不支持下单/支付
+- Python 数据服务仍保留部分旧业务路由，后续需要继续收口
+- LLM 上游繁忙时会重试并回退规则；上游完全不可用时仍可能无法返回 AI 回复
+- Java Compose 服务尚未做完整容器启动回归
 
-- `CORS_ORIGINS` 是否包含当前访问地址，例如 `http://127.0.0.1:5173`
-- 是否同时使用 `localhost` 和 `127.0.0.1` 混用
-- 浏览器是否拦截了 Cookie
-- 后端是否已用最新 `.env` 重启
+## 九、Git 与密钥
 
-### PyJWT 提示 InsecureKeyLengthWarning
+不要提交：
 
-`SECRET_KEY` 太短。重新生成至少 32 字节的密钥并重启后端：
+- `backend/.env`
+- 数据库备份
+- 包含手机号、邮箱、密钥的日志
 
-```powershell
-python -c "import secrets; print(secrets.token_hex(32))"
+当前数据库目录和本地启动脚本：
+
+```text
+D:\aWusheng\mysql-data
+scripts\start-mysql.ps1
 ```
 
-### 商品列表为空
+## 十、相关文档
 
-先确认接口：
-
-```powershell
-Invoke-RestMethod "http://127.0.0.1:5000/api/products?page_size=12"
-```
-
-如果接口有数据但页面为空，按 `Ctrl+F5` 强制刷新，避免旧前端模块缓存。
-
-## 文档
-
-文档入口：`docs/README.md`
-
-- `需求文档.docx`：最终提交版需求，仅本地保留，不入库
-- `docs/需求文档_完整版.md`：仓库内工程需求说明
-- `docs/database/schema.md`：当前实现层 Schema 与 ER 图
-- `docs/api/openapi.yaml`：成员A范围 API 契约
-- `docs/adr/0001-production-baseline.md`：生产基线与技术决策
-- `docs/operations/runbook.md`：发布、备份、回滚与安全事件处理
-- `docs/需求文档图表.md`：需求阶段图表源
-
-`需求文档.docx` 是最终提交版，不随 Git 分发；协作者使用 Markdown 工程说明和实现 ER。
+- `docs/agent-skill-mcp.md`
+- `docs/complex-agent.md`
+- `docs/middleware.md`
+- `docs/database/schema.md`
+- `项目检查.md`

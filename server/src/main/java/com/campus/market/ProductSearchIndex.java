@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
@@ -91,6 +92,28 @@ public class ProductSearchIndex {
         Thread worker = new Thread(this::rebuild, "product-index");
         worker.setDaemon(true);
         worker.start();
+    }
+
+    @Scheduled(fixedDelay = 60000, initialDelay = 60000)
+    public void ensureIndexEventually() {
+        if (url.isBlank() || store == null || System.currentTimeMillis() < unavailableUntil) {
+            return;
+        }
+        try {
+            Response response = client().performRequest(new Request("HEAD", "/" + INDEX));
+            if (response.getStatusLine().getStatusCode() == 200) {
+                return;
+            }
+        } catch (org.elasticsearch.client.ResponseException exc) {
+            if (exc.getResponse().getStatusLine().getStatusCode() != 404) {
+                markDown("检查索引");
+                return;
+            }
+        } catch (Exception exc) {
+            markDown("检查索引");
+            return;
+        }
+        rebuild();
     }
 
     void rebuild() {

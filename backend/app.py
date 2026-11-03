@@ -3,7 +3,6 @@ import os
 import time
 import uuid
 
-from dotenv import load_dotenv
 from flask import Flask, g, request
 from sqlalchemy import text
 from sqlalchemy.pool import StaticPool
@@ -19,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 
 def create_app(config_name: str | None = None, *, role: str = "full"):
-    load_dotenv()
     app = Flask(__name__)
     app.config.from_object(get_config(config_name))
     app.config["SQLALCHEMY_DATABASE_URI"] = app.config["DATABASE_URL"]

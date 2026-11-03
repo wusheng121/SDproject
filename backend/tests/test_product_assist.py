@@ -167,7 +167,7 @@ def test_price_reference_uses_paid_deals_not_listing_prices(client, app):
         order = Order(buyer_id=buyer.id, status="paid", total_amount=4000)
         db.session.add(order)
         db.session.flush()
-        for product, price in zip(deals, (1000, 3000)):
+        for product, price in zip(deals, (1000, 3000), strict=True):
             db.session.add(OrderItem(order_id=order.id, product_id=product.id, quantity=1, price=price))
         pending = Order(buyer_id=buyer.id, status="pending", total_amount=20)
         db.session.add(pending)

@@ -7,7 +7,7 @@ services:
       MYSQL_USER: campus
       MYSQL_PASSWORD: campus
     ports:
-      - "3307:3306"
+      - "3407:3306"
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
@@ -20,7 +20,7 @@ services:
       retries: 20
 
   redis:
-    image: redis:7-alpine
+    image: redis:7
     ports:
       - "6379:6379"
     healthcheck:
@@ -82,6 +82,42 @@ services:
       sh -c "flask --app app db upgrade || flask --app app init-db;
              flask --app app seed-demo;
              gunicorn --bind 0.0.0.0:5000 --workers 2 --threads 4 app:app"
+
+  java-server:
+    build:
+      context: ./server
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/campus_market?characterEncoding=UTF-8&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: campus
+      SPRING_DATASOURCE_PASSWORD: campus
+      DATA_URL: http://backend:5000
+      REDIS_URL: redis://redis:6379/0
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      SECRET_KEY: dev-compose-secret-0123456789abcdef
+      JWT_ISSUER: campus-market
+      JWT_AUDIENCE: campus-market-web
+      CACHE_LOCAL_TTL_SECONDS: "20"
+      CACHE_REDIS_TTL_SECONDS: "120"
+      SMTP_HOST: mailhog
+      SMTP_PORT: "1025"
+      SMTP_AUTH: "false"
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+      elasticsearch:
+        condition: service_started
+      backend:
+        condition: service_started
 
   frontend:
     build:

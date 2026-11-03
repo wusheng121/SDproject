@@ -29,6 +29,7 @@ class User(db.Model, TimestampMixin):
     preferred_categories = db.Column(db.Text, nullable=True)
     email_verified_at = db.Column(db.DateTime, nullable=True)
     password_changed_at = db.Column(db.DateTime, nullable=True)
+    must_change_password = db.Column(db.Boolean, default=False, nullable=False)
     failed_login_count = db.Column(db.Integer, default=0, nullable=False)
     locked_until = db.Column(db.DateTime, nullable=True)
     is_active = db.Column(db.Boolean, default=True, nullable=False, index=True)
@@ -144,6 +145,81 @@ class ApiKey(db.Model):
 
     def scope_set(self):
         return {s.strip() for s in (self.scopes or "").split(",") if s.strip()}
+
+
+class Agent(db.Model):
+    __tablename__ = "agents"
+
+    id = db.Column(ID_TYPE, primary_key=True, autoincrement=True)
+    code = db.Column(db.String(64), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    agent_type = db.Column(db.String(20), nullable=False, index=True)
+    description = db.Column(db.String(500), nullable=True)
+    model = db.Column(db.String(100), nullable=True)
+    prompt_version = db.Column(db.String(32), nullable=True)
+    status = db.Column(db.String(20), default="active", nullable=False, index=True)
+    config_json = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+    skill_links = db.relationship(
+        "AgentSkill", back_populates="agent", cascade="all, delete-orphan"
+    )
+
+
+class Skill(db.Model):
+    __tablename__ = "skills"
+
+    id = db.Column(ID_TYPE, primary_key=True, autoincrement=True)
+    skill_no = db.Column(db.String(32), nullable=True)
+    code = db.Column(db.String(64), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    module = db.Column(db.String(32), nullable=False, index=True)
+    description = db.Column(db.String(1000), nullable=True)
+    input_schema_json = db.Column(db.Text, nullable=True)
+    output_schema_json = db.Column(db.Text, nullable=True)
+    allowed_operations = db.Column(db.String(500), nullable=True)
+    forbidden_operations = db.Column(db.String(500), nullable=True)
+    scope = db.Column(db.String(255), nullable=True, index=True)
+    handler_type = db.Column(db.String(20), default="java", nullable=False)
+    handler_target = db.Column(db.String(255), nullable=True)
+    status = db.Column(db.String(20), default="draft", nullable=False, index=True)
+    version = db.Column(db.Integer, default=1, nullable=False)
+    created_by = db.Column(
+        db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+    )
+
+    agent_links = db.relationship(
+        "AgentSkill", back_populates="skill", cascade="all, delete-orphan"
+    )
+
+
+class AgentSkill(db.Model):
+    __tablename__ = "agent_skills"
+
+    id = db.Column(ID_TYPE, primary_key=True, autoincrement=True)
+    agent_id = db.Column(
+        db.ForeignKey("agents.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    skill_id = db.Column(
+        db.ForeignKey("skills.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    enabled = db.Column(db.Boolean, default=True, nullable=False)
+    priority = db.Column(db.Integer, default=100, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("agent_id", "skill_id", name="uq_agent_skills_agent_skill"),
+    )
+
+    agent = db.relationship("Agent", back_populates="skill_links")
+    skill = db.relationship("Skill", back_populates="agent_links")
 
 
 class EmailVerificationToken(db.Model):

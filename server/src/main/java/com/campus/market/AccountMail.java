@@ -2,19 +2,20 @@ package com.campus.market;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Component;
-
-import java.io.OutputStream;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
 
 @Component
 public class AccountMail {
     private static final Logger log = LoggerFactory.getLogger(AccountMail.class);
-    private final CampusProperties properties;
 
-    public AccountMail(CampusProperties properties) {
+    private final CampusProperties properties;
+    private final JavaMailSender mailSender;
+
+    public AccountMail(CampusProperties properties, JavaMailSender mailSender) {
         this.properties = properties;
+        this.mailSender = mailSender;
     }
 
     public void sendVerification(String email, String token) {
@@ -30,41 +31,19 @@ public class AccountMail {
     private void send(String email, String subject, String text) {
         String host = properties.getSmtpHost();
         if (host == null || host.isBlank()) {
-            host = "127.0.0.1";
+            log.info("mail skipped: SMTP_HOST is empty. to={} subject={} body={}", email, subject, text);
+            return;
         }
-        try (Socket socket = new Socket(host, properties.getSmtpPort())) {
-            socket.setSoTimeout(10000);
-            OutputStream out = socket.getOutputStream();
-            read(socket);
-            write(out, "EHLO campus-market\r\n");
-            read(socket);
-            write(out, "MAIL FROM:<" + properties.getMailFrom() + ">\r\n");
-            read(socket);
-            write(out, "RCPT TO:<" + email + ">\r\n");
-            read(socket);
-            write(out, "DATA\r\n");
-            read(socket);
-            String message = "From: " + properties.getMailFrom() + "\r\n"
-                    + "To: " + email + "\r\n"
-                    + "Subject: " + subject + "\r\n"
-                    + "\r\n"
-                    + text + "\r\n.\r\n";
-            write(out, message);
-            read(socket);
-            write(out, "QUIT\r\n");
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(properties.getMailFrom());
+            message.setTo(email);
+            message.setSubject(subject);
+            message.setText(text);
+            mailSender.send(message);
             log.info("mail sent via {}:{} to={} subject={}", host, properties.getSmtpPort(), email, subject);
         } catch (Exception exc) {
-            log.info("mail failed, open MailHog at http://127.0.0.1:8025 or use the link: to={} subject={} body={}", email, subject, text);
+            log.warn("mail failed via {}:{} to={} subject={} body={}", host, properties.getSmtpPort(), email, subject, text, exc);
         }
-    }
-
-    private static void write(OutputStream out, String line) throws Exception {
-        out.write(line.getBytes(StandardCharsets.UTF_8));
-        out.flush();
-    }
-
-    private static void read(Socket socket) throws Exception {
-        byte[] buffer = new byte[1024];
-        socket.getInputStream().read(buffer);
     }
 }

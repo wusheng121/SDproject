@@ -4,14 +4,14 @@ export function apiCaptcha() {
   return http.get("/v1/auth/captcha");
 }
 
-export function apiRegister({ username, email, password, phone, captcha_id, captcha_code, login_role }) {
-  return http.post("/v1/auth/register", { username, email, password, phone, captcha_id, captcha_code, login_role });
+export function apiRegister({ username, email, password, phone, captcha_id, captcha_code }) {
+  return http.post("/v1/auth/register", { username, email, password, phone, captcha_id, captcha_code });
 }
 
-export function apiLogin({ identifier, password, remember, captcha_id, captcha_code, login_role }) {
+export function apiLogin({ identifier, password, remember, captcha_id, captcha_code }) {
   return http.post(
     "/v1/auth/login",
-    { identifier, password, remember, captcha_id, captcha_code, login_role },
+    { identifier, password, remember, captcha_id, captcha_code },
     { skipAuthRedirect: true }
   );
 }
@@ -62,4 +62,11 @@ export function apiForgotPassword(email) {
 
 export function apiResetPassword(token, newPassword) {
   return http.post("/v1/auth/reset-password", { token, new_password: newPassword });
+}
+
+export function apiChangePassword(currentPassword, newPassword) {
+  return http.post("/v1/users/me/password", {
+    current_password: currentPassword,
+    new_password: newPassword
+  });
 }

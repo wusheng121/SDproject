@@ -2,7 +2,9 @@ import os
 
 from dotenv import load_dotenv
 
-load_dotenv()
+# Config values are evaluated at class definition time, so the .env file must be
+# loaded here before BaseConfig is defined.
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 
 def _split_csv(value: str):
@@ -50,6 +52,7 @@ class BaseConfig:
     SMTP_USER = os.getenv("SMTP_USER", "")
     SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
     SMTP_USE_TLS = _bool(os.getenv("SMTP_USE_TLS"), False)
+    SMTP_SSL = _bool(os.getenv("SMTP_SSL"), False)
     MAIL_FROM = os.getenv("MAIL_FROM", "no-reply@campus-market.local")
 
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
@@ -58,7 +61,7 @@ class BaseConfig:
     # Dev defaults are intentionally local-only. Production config overrides these.
     DATABASE_URL = os.getenv(
         "DATABASE_URL",
-        "mysql+pymysql://campus:campus@127.0.0.1:3307/campus_market?charset=utf8mb4",
+        "mysql+pymysql://campus:campus@127.0.0.1:3407/campus_market?charset=utf8mb4",
     )
     # 宿主机默认连 Docker Desktop 映射的 Redis。容器内由 docker-compose 覆盖成 redis://redis:6379/0。
     REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0")
@@ -81,6 +84,7 @@ class TestingConfig(BaseConfig):
     RATELIMIT_STORAGE_URI = "memory://"
     BCRYPT_COST = 4
     REFRESH_COOKIE_SECURE = False
+    SMTP_HOST = ""
 
 
 class ProductionConfig(BaseConfig):
