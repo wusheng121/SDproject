@@ -374,7 +374,9 @@ class BehaviorEvent(db.Model):
         now = now or datetime.utcnow()
         return cls.query.filter(
             cls.created_at >= now - timedelta(days=7),
-            cls.created_at <= now,
+            # MySQL DATETIME without fractional precision can round a just-written
+            # event up to the next second; allow a small future tolerance.
+            cls.created_at <= now + timedelta(seconds=1),
             cls.behavior_type.in_(cls.WEIGHTS),
         )
 
