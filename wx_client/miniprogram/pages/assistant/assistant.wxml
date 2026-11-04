@@ -1,0 +1,74 @@
+<view class="page assistant-page theme-{{theme}}">
+  <view class="assistant-head">
+    <view>
+      <text class="eyebrow">CAMPUS AI</text>
+      <text class="page-title">购物助手</text>
+      <text class="page-subtitle">找商品、比价格、问建议，直接说你的需求。</text>
+    </view>
+    <button class="btn btn-plain btn-sm" bindtap="reset">新对话</button>
+  </view>
+
+  <scroll-view class="chat-scroll" scroll-y scroll-into-view="{{scrollTarget}}">
+    <view wx:for="{{messages}}" wx:for-item="item" wx:for-index="messageIndex" wx:key="index" id="msg-{{messageIndex}}" class="message-row {{item.role === 'user' ? 'mine' : ''}}">
+      <view class="bubble {{item.role === 'user' ? 'user-bubble' : 'assistant-bubble'}}">
+        <text class="bubble-text">{{item.content}}</text>
+        <view wx:if="{{item.items.length}}" class="ai-products">
+          <view wx:for="{{item.items}}" wx:for-item="product" wx:key="id" class="ai-product" data-id="{{product.id}}" bindtap="openProduct">
+            <image wx:if="{{product.image_url}}" class="ai-thumb" src="{{product.image_url}}" mode="aspectFill"></image>
+            <view wx:else class="ai-thumb placeholder">商品</view>
+            <view class="ai-product-info">
+              <text class="ai-product-name one-line">{{product.name}}</text>
+              <text class="ai-product-meta">{{product.condition}} · ¥{{product.price}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view wx:if="{{item.actions && item.actions.length}}" class="actions-box">
+          <text class="actions-title">待确认操作</text>
+          <view wx:for="{{item.actions}}" wx:for-item="action" wx:for-index="actionIndex" wx:key="action_id" class="action-card">
+            <view class="row between">
+              <text class="action-name">{{action.type === 'cart_add' ? '加入购物车' : '给卖家发消息'}}</text>
+              <text wx:if="{{action.status !== 'pending'}}" class="action-status">{{action.status}}</text>
+            </view>
+            <text wx:if="{{action.type === 'cart_add'}}" class="action-desc">确认后会把商品加入你的购物车。</text>
+            <textarea
+              wx:if="{{action.type === 'seller_message'}}"
+              class="textarea action-input"
+              maxlength="500"
+              value="{{action.draft}}"
+              data-message-index="{{messageIndex}}"
+              data-action-index="{{actionIndex}}"
+              bindinput="onActionInput"
+              placeholder="输入要发给卖家的消息"
+            ></textarea>
+            <view wx:if="{{action.status === 'pending'}}" class="action-buttons">
+              <button
+                class="btn btn-sm action-confirm"
+                loading="{{action.loading}}"
+                data-message-index="{{messageIndex}}"
+                data-action-index="{{actionIndex}}"
+                bindtap="confirmAction"
+              >{{action.type === 'cart_add' ? '确认加入' : '确认发送'}}</button>
+              <button
+                class="btn btn-plain btn-sm action-cancel"
+                data-message-index="{{messageIndex}}"
+                data-action-index="{{actionIndex}}"
+                bindtap="cancelAction"
+              >取消</button>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+    <view wx:if="{{sending}}" class="message-row"><view class="bubble assistant-bubble"><text class="bubble-text">正在思考...</text></view></view>
+  </scroll-view>
+
+  <view class="prompt-row">
+    <text wx:for="{{prompts}}" wx:key="*this" class="prompt-chip" data-text="{{item}}" bindtap="usePrompt">{{item}}</text>
+  </view>
+
+  <view class="composer">
+    <input class="input composer-input" value="{{draft}}" bindinput="onInput" confirm-type="send" bindconfirm="send" placeholder="描述你想找的商品" />
+    <button class="btn send-btn" loading="{{sending}}" bindtap="send">发送</button>
+  </view>
+</view>

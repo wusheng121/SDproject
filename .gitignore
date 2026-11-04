@@ -81,3 +81,9 @@ TODOLIST.md
 # ---- Runtime logs ----
 *.log
 backend/*.log
+
+# ---- WeChat DevTools local/private config ----
+wx_client/project.private.config.json
+
+# ---- Local review notes ----
+/修改意见.md

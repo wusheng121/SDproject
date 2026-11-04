@@ -1,0 +1,81 @@
+<view class="page profile-page theme-{{theme}}">
+  <view class="page-heading">
+    <text class="eyebrow">MY ACCOUNT</text>
+    <text class="page-title">我的</text>
+    <text class="page-subtitle">管理收藏、发布、订单和消息。</text>
+  </view>
+
+  <view class="profile-panel">
+    <view class="avatar">{{user.username ? user.username[0] : '校'}}</view>
+    <view class="identity">
+      <text class="profile-name">{{user.username || '未登录'}}</text>
+      <text class="profile-meta">{{loggedIn ? (user.email || '校园认证用户') : '登录后查看收藏、发布和订单'}}</text>
+    </view>
+    <button wx:if="{{!loggedIn}}" class="btn btn-sm login-btn" bindtap="goLogin">登录</button>
+  </view>
+
+  <view wx:if="{{loggedIn}}" class="stats-grid">
+    <view class="stat-item"><text class="stat-value">{{stats.favorites}}</text><text class="stat-label">收藏</text></view>
+    <view class="stat-item"><text class="stat-value">{{stats.products}}</text><text class="stat-label">发布</text></view>
+    <view class="stat-item"><text class="stat-value">{{stats.behaviors}}</text><text class="stat-label">行为</text></view>
+    <view class="stat-item"><text class="stat-value">{{stats.categories}}</text><text class="stat-label">兴趣</text></view>
+  </view>
+
+  <view wx:if="{{loggedIn}}" class="preference-panel">
+    <view class="row between">
+      <view>
+        <text class="eyebrow">INTERESTS</text>
+        <text class="menu-title">兴趣偏好</text>
+      </view>
+      <text class="text-action" bindtap="goSettings">管理</text>
+    </view>
+    <view wx:if="{{preferences.length}}" class="preference-tags">
+      <text wx:for="{{preferences}}" wx:key="*this" class="tag">{{item}}</text>
+    </view>
+    <text wx:else class="muted preference-empty">还没有设置兴趣偏好</text>
+  </view>
+
+  <view wx:if="{{loggedIn}}" class="menu-section">
+    <text class="menu-label">我的交易</text>
+    <view class="menu-card">
+      <view class="menu-item" bindtap="goFavorites">
+        <view class="menu-copy"><text class="menu-title">我的收藏</text><text class="menu-note">保存想再看一看的商品</text></view>
+        <text class="arrow">›</text>
+      </view>
+      <view class="menu-item" bindtap="goMyProducts">
+        <view class="menu-copy"><text class="menu-title">我的发布</text><text class="menu-note">查看审核状态和编辑商品</text></view>
+        <text class="arrow">›</text>
+      </view>
+      <view class="menu-item" bindtap="goOrders">
+        <view class="menu-copy"><text class="menu-title">我的订单</text><text class="menu-note">查看交易状态</text></view>
+        <text class="arrow">›</text>
+      </view>
+      <view class="menu-item" bindtap="goMessages">
+        <view class="menu-copy"><text class="menu-title">消息</text><text class="menu-note">和买家、卖家沟通</text></view>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="menu-section">
+    <text class="menu-label">偏好设置</text>
+    <view class="menu-card">
+      <view wx:if="{{loggedIn}}" class="menu-item" bindtap="goSettings">
+        <view class="menu-copy"><text class="menu-title">账号设置</text><text class="menu-note">资料、兴趣偏好、密码和安全</text></view>
+        <text class="arrow">›</text>
+      </view>
+      <view class="menu-item">
+        <view class="menu-copy"><text class="menu-title">深色模式</text><text class="menu-note">跟随你的阅读习惯切换界面</text></view>
+        <switch checked="{{dark}}" color="#47785f" bindchange="toggleTheme" />
+      </view>
+      <view wx:if="{{loggedIn}}" class="menu-item danger-item" bindtap="logout">
+        <text class="menu-title danger-text">退出登录</text>
+        <text class="arrow">›</text>
+      </view>
+    </view>
+  </view>
+
+  <view wx:if="{{!loggedIn}}" class="login-gate">
+    <button class="btn full" bindtap="goLogin">登录 / 注册</button>
+  </view>
+</view>

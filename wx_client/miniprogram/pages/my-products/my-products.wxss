@@ -1,0 +1,93 @@
+.my-products-page {
+  padding-top: 24rpx;
+}
+
+.publish-new {
+  margin-bottom: 24rpx;
+}
+
+.listing-card {
+  display: flex;
+  gap: 20rpx;
+  padding: 20rpx;
+  margin-bottom: 16rpx;
+  border: 1rpx solid var(--border);
+  border-radius: 8rpx;
+  background: var(--card);
+}
+
+.listing-image {
+  width: 176rpx;
+  height: 176rpx;
+  flex: 0 0 auto;
+  border-radius: 6rpx;
+  background: var(--image-bg);
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 21rpx;
+}
+
+.listing-info {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.listing-category {
+  color: var(--muted);
+  font-size: 21rpx;
+}
+
+.listing-status {
+  flex: 0 0 auto;
+  padding: 4rpx 10rpx;
+  border: 1rpx solid var(--border);
+  border-radius: 4rpx;
+  color: var(--muted);
+  font-size: 20rpx;
+}
+
+.status-pending {
+  color: #a77a22;
+  border-color: #d9b567;
+}
+
+.status-approved {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.status-rejected {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.listing-name {
+  min-height: 58rpx;
+  color: var(--text);
+  font-size: 27rpx;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+.listing-price {
+  color: var(--price);
+  font-size: 32rpx;
+  font-weight: 800;
+}
+
+.listing-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.empty-btn {
+  margin-top: 20rpx;
+}

@@ -14,7 +14,8 @@
 ```text
 backend/       Python 数据服务、Alembic 迁移、演示数据
 server/        Java Spring Boot 主服务
-frontend/      Vue 3 前端
+frontend/      Vue 3 PC 前端
+wx_client/     微信小程序
 scripts/       本地启动脚本
 docs/          项目文档
 ```
@@ -451,9 +452,62 @@ Authorization: Bearer <Agent API Key>
 
 当前 MCP 只读，不支持下单、支付和写操作。
 
-## 八、已知限制
+## 八、微信小程序
 
-- 微信小程序未实现
+小程序工程：
+
+```text
+wx_client/
+```
+
+启动：
+
+1. 启动 Java、Python、MySQL、Redis、RabbitMQ、Elasticsearch
+2. 微信开发者工具导入 `wx_client`
+3. 开发阶段关闭“合法域名校验”
+4. 点击编译/预览
+
+小程序默认后端：
+
+```text
+http://127.0.0.1:8080
+```
+
+真机调试需要把 `wx_client/miniprogram/utils/config.ts` 改成电脑局域网 IP。
+
+底部 tabBar：
+
+```text
+首页 / 发布 / 购物车 / 订单 / 我的
+```
+
+搜索保留在首页顶部，收藏放在“我的”。
+
+已实现：
+
+- 登录/注册
+- 商品列表、分页搜索、详情
+- 收藏
+- 发布闲置、AI 识图填充、同品类价格参考
+- 我的发布、编辑、删除
+- 购物车
+- 订单、模拟支付、取消订单、订单评价
+- 消息
+- 首页个性化推荐
+- AI 购物助手
+- AI 对话中的加购确认和卖家消息确认
+- 我的统计、兴趣偏好、资料、修改密码、注销账号
+- 深色模式手动切换
+
+暂不包含：
+
+- 管理员后台
+- 邮箱验证/找回密码
+
+## 九、已知限制
+
+- 小程序已补齐交易、发布、推荐和 AI 助手，但仍需开发者工具和真机回归
+- 小程序暂未实现邮箱验证、忘记密码和重置密码
 - 旧 `agent_dialogues` 历史不迁移到新 Java 会话表
 - Planner 目前是规则 Planner，不是完整的 LLM 自由规划
 - `cart_add` 和 `seller_message` 必须用户确认
@@ -462,7 +516,7 @@ Authorization: Bearer <Agent API Key>
 - LLM 上游繁忙时会重试并回退规则；上游完全不可用时仍可能无法返回 AI 回复
 - Java Compose 服务尚未做完整容器启动回归
 
-## 九、Git 与密钥
+## 十、Git 与密钥
 
 不要提交：
 
@@ -477,7 +531,7 @@ D:\aWusheng\mysql-data
 scripts\start-mysql.ps1
 ```
 
-## 十、相关文档
+## 十一、相关文档
 
 - `docs/agent-skill-mcp.md`
 - `docs/complex-agent.md`

@@ -1,0 +1,37 @@
+<view class="page auth-page theme-{{theme}}">
+  <view class="auth-hero">
+    <text class="auth-eyebrow">CAMPUS MARKETPLACE</text>
+    <view class="brand-row">
+      <view class="brand-mark">校</view>
+      <view>
+        <text class="brand-title">校园集市</text>
+        <text class="brand-subtitle">让闲置找到下一个主人</text>
+      </view>
+    </view>
+    <text class="auth-title">回到校园里，继续发现好东西。</text>
+    <text class="auth-note">教材、数码、生活用品，和同学面对面完成一次简单的交易。</text>
+  </view>
+
+  <view class="auth-card">
+    <view class="field">
+      <text class="label">账号</text>
+      <input class="input" value="{{identifier}}" data-field="identifier" bindinput="onInput" placeholder="用户名或邮箱" />
+    </view>
+    <view class="field">
+      <text class="label">密码</text>
+      <input class="input" password value="{{password}}" data-field="password" bindinput="onInput" placeholder="输入登录密码" />
+    </view>
+    <view class="field">
+      <text class="label">验证码</text>
+      <view class="captcha-row">
+        <input class="input captcha-input" maxlength="4" value="{{captchaCode}}" data-field="captchaCode" bindinput="onInput" placeholder="输入验证码" />
+        <image wx:if="{{captchaImage}}" class="captcha" src="{{captchaImage}}" bindtap="loadCaptcha" mode="aspectFit"></image>
+      </view>
+    </view>
+    <button class="btn full submit" loading="{{loading}}" bindtap="submit">登录</button>
+    <view class="auth-footer">
+      <text class="muted">还没有账号？</text>
+      <text class="link" bindtap="goRegister">立即注册</text>
+    </view>
+  </view>
+</view>

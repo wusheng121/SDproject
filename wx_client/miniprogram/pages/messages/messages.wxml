@@ -1,0 +1,41 @@
+<view class="page messages-page theme-{{theme}}">
+  <view class="page-heading">
+    <text class="eyebrow">MESSAGES</text>
+    <text class="page-title">消息</text>
+    <text class="page-subtitle">和卖家确认成色、价格和交易地点。</text>
+  </view>
+
+  <view wx:if="{{conversations.length === 0}}" class="empty">暂无会话</view>
+  <scroll-view wx:else class="conversation-list" scroll-y>
+    <view
+      wx:for="{{conversations}}"
+      wx:key="id"
+      class="conversation {{current && current.id === item.id ? 'active' : ''}}"
+      data-index="{{index}}"
+      bindtap="selectConversation"
+    >
+      <view class="row between">
+        <text class="peer">{{item.peer_name}}</text>
+        <text class="conversation-time">{{item.updated_at}}</text>
+      </view>
+      <text class="conversation-line one-line">{{item.product_name}} · {{item.last_message}}</text>
+    </view>
+  </scroll-view>
+
+  <view wx:if="{{current}}" class="chat-card">
+    <view class="chat-head">
+      <text class="chat-title">{{current.peer_name}}</text>
+      <text class="muted">{{current.product_name || '商品会话'}}</text>
+    </view>
+    <scroll-view class="message-list" scroll-y>
+      <view wx:for="{{messages}}" wx:key="id" class="message {{item.sender_id === current.buyer_id ? 'mine' : ''}}">
+        <text>{{item.content}}</text>
+      </view>
+    </scroll-view>
+    <view class="composer">
+      <input class="input composer-input" value="{{draft}}" bindinput="onInput" placeholder="输入消息" />
+      <button class="btn send" bindtap="send">发送</button>
+    </view>
+  </view>
+  <view wx:else class="empty-thread">选择一个会话开始聊天</view>
+</view>

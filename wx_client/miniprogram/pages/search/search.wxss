@@ -1,0 +1,67 @@
+.search-page {
+  padding-top: 24rpx;
+}
+
+.filter-card {
+  padding: 24rpx;
+  border: 1rpx solid var(--border);
+  border-radius: 8rpx;
+  background: var(--card);
+}
+
+.keyword {
+  margin-bottom: 16rpx;
+}
+
+.filter-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+
+.filter-grid picker {
+  width: calc(50% - 7rpx);
+}
+
+.filter-grid > .input {
+  width: calc(50% - 7rpx);
+}
+
+.ai-actions {
+  display: flex;
+  gap: 12rpx;
+  margin-top: 16rpx;
+}
+
+.ai-btn {
+  flex: 1;
+}
+
+.search-btn {
+  width: 100%;
+  margin-top: 14rpx;
+}
+
+.results-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin: 40rpx 4rpx 20rpx;
+}
+
+.results-count {
+  color: var(--muted);
+  font-size: 22rpx;
+}
+
+.list-end {
+  padding: 26rpx 0 10rpx;
+  color: var(--muted);
+  font-size: 22rpx;
+  text-align: center;
+}
+
+.ai-empty-btn {
+  margin-top: 20rpx;
+}

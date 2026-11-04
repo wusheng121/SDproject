@@ -1,0 +1,32 @@
+<view class="page my-products-page theme-{{theme}}">
+  <view class="page-heading">
+    <text class="eyebrow">MY LISTINGS</text>
+    <text class="page-title">我的发布</text>
+    <text class="page-subtitle">查看审核状态，编辑商品信息，或继续发布新的闲置。</text>
+  </view>
+
+  <button class="btn full publish-new" bindtap="goPublish">发布新闲置</button>
+
+  <view wx:if="{{loading}}" class="empty">正在加载...</view>
+  <view wx:elif="{{items.length === 0}}" class="empty">
+    <text>还没有发布过闲置</text>
+    <button class="btn btn-plain empty-btn" bindtap="goPublish">去发布</button>
+  </view>
+  <view wx:else class="listing-list">
+    <view wx:for="{{items}}" wx:key="id" class="listing-card" data-id="{{item.id}}" data-status="{{item.status}}" bindtap="open">
+      <image wx:if="{{item.image_url}}" class="listing-image" src="{{item.image_url}}" mode="aspectFill"></image>
+      <view wx:else class="listing-image placeholder">商品图片</view>
+      <view class="listing-info">
+        <view class="row between">
+          <text class="listing-category">{{item.categories && item.categories.length ? item.categories[0] : '校园好物'}}</text>
+          <text class="listing-status status-{{item.status}}">{{item.status_text}}</text>
+        </view>
+        <text class="listing-name line-clamp">{{item.name}}</text>
+        <text class="listing-price">¥{{item.price}}</text>
+        <view class="listing-actions">
+          <button class="btn btn-plain btn-sm" data-id="{{item.id}}" catchtap="edit">编辑</button>
+        </view>
+      </view>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,158 @@
+.detail-page {
+  padding-top: 22rpx;
+  padding-bottom: 170rpx;
+}
+
+.image-section {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 18rpx;
+  border: 1rpx solid var(--border);
+  border-radius: 8rpx;
+  background: var(--image-bg);
+}
+
+.hero {
+  display: block;
+  width: 100%;
+  height: 620rpx;
+  background: var(--image-bg);
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 25rpx;
+}
+
+.image-badge {
+  position: absolute;
+  top: 18rpx;
+  right: 18rpx;
+  padding: 7rpx 14rpx;
+  border-radius: 4rpx;
+  color: #ffffff;
+  background: rgba(27, 42, 35, 0.76);
+  font-size: 21rpx;
+}
+
+.info-card {
+  padding-bottom: 18rpx;
+}
+
+.title-row {
+  align-items: flex-start;
+  gap: 18rpx;
+}
+
+.product-title {
+  flex: 1;
+  color: var(--text);
+  font-size: 40rpx;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.product-price {
+  flex: 0 0 auto;
+  color: var(--price);
+  font-size: 40rpx;
+  font-weight: 800;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 18rpx;
+}
+
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 16rpx 0;
+  border-top: 1rpx solid var(--border);
+  font-size: 25rpx;
+}
+
+.meta-label {
+  color: var(--muted);
+}
+
+.block-title {
+  display: block;
+  margin-bottom: 12rpx;
+  color: var(--text);
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.description {
+  display: block;
+  color: var(--text);
+  font-size: 26rpx;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.defect {
+  margin-top: 22rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid var(--border);
+}
+
+.review-empty {
+  margin-top: 16rpx;
+}
+
+.review {
+  padding: 18rpx 0;
+  border-top: 1rpx solid var(--border);
+}
+
+.review:first-of-type {
+  margin-top: 12rpx;
+}
+
+.review-user {
+  color: var(--text);
+  font-size: 25rpx;
+  font-weight: 650;
+}
+
+.review-score {
+  color: var(--primary);
+  font-size: 23rpx;
+}
+
+.review-comment {
+  display: block;
+  margin-top: 8rpx;
+  color: var(--muted);
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.action-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  gap: 12rpx;
+  padding: 16rpx 28rpx calc(16rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid var(--border);
+  background: var(--card);
+}
+
+.action-secondary {
+  flex: 0 0 150rpx;
+  padding: 0 10rpx;
+  font-size: 23rpx;
+}
+
+.action-primary {
+  flex: 1;
+}

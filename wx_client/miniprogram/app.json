@@ -1,0 +1,41 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/search/search",
+    "pages/product-detail/product-detail",
+    "pages/publish/publish",
+    "pages/my-products/my-products",
+    "pages/settings/settings",
+    "pages/assistant/assistant",
+    "pages/favorites/favorites",
+    "pages/cart/cart",
+    "pages/orders/orders",
+    "pages/messages/messages",
+    "pages/profile/profile",
+    "pages/login/login",
+    "pages/register/register"
+  ],
+  "window": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "校园集市",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f6f3",
+    "backgroundTextStyle": "dark"
+  },
+  "tabBar": {
+    "color": "#748078",
+    "selectedColor": "#47785f",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "首页" },
+      { "pagePath": "pages/publish/publish", "text": "发布" },
+      { "pagePath": "pages/cart/cart", "text": "购物车" },
+      { "pagePath": "pages/orders/orders", "text": "订单" },
+      { "pagePath": "pages/profile/profile", "text": "我的" }
+    ]
+  },
+  "style": "v2",
+  "componentFramework": "glass-easel",
+  "lazyCodeLoading": "requiredComponents"
+}

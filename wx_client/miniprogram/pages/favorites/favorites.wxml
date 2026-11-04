@@ -1,0 +1,16 @@
+<view class="page favorites-page theme-{{theme}}">
+  <view class="page-heading">
+    <text class="eyebrow">SAVED ITEMS</text>
+    <text class="page-title">我的收藏</text>
+    <text class="page-subtitle">把喜欢的校园好物先收好，想清楚后再联系卖家。</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="empty">正在加载...</view>
+  <view wx:elif="{{items.length === 0}}" class="empty">还没有收藏商品</view>
+  <view wx:else class="product-grid">
+    <view wx:for="{{items}}" wx:key="id" class="product-cell favorite-item">
+      <product-card class="product-card-host" product="{{item}}" bind:open="openProduct" />
+      <button class="remove" data-id="{{item.id}}" catchtap="remove">取消收藏</button>
+    </view>
+  </view>
+</view>

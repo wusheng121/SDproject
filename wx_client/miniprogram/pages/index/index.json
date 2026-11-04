@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "校园集市",
+  "usingComponents": {
+    "product-card": "/components/product-card/index"
+  }
+}
