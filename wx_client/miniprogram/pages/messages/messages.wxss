@@ -1,0 +1,114 @@
+.messages-page {
+  padding-top: 24rpx;
+}
+
+.conversation-list {
+  max-height: 42vh;
+  margin-bottom: 18rpx;
+}
+
+.conversation {
+  padding: 20rpx;
+  margin-bottom: 12rpx;
+  border: 1rpx solid var(--border);
+  border-radius: 8rpx;
+  background: var(--card);
+}
+
+.conversation.active {
+  border-color: var(--primary);
+  background: var(--hover);
+}
+
+.peer {
+  color: var(--text);
+  font-size: 26rpx;
+  font-weight: 650;
+}
+
+.conversation-time {
+  color: var(--muted);
+  font-size: 20rpx;
+}
+
+.conversation-line {
+  display: block;
+  margin-top: 10rpx;
+  color: var(--muted);
+  font-size: 23rpx;
+}
+
+.chat-card {
+  padding: 22rpx;
+  border: 1rpx solid var(--border);
+  border-radius: 8rpx;
+  background: var(--card);
+}
+
+.chat-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14rpx;
+  padding-bottom: 14rpx;
+  border-bottom: 1rpx solid var(--border);
+}
+
+.chat-title {
+  color: var(--text);
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.message-list {
+  max-height: 42vh;
+  padding: 18rpx 0;
+}
+
+.message {
+  display: flex;
+  margin-bottom: 14rpx;
+}
+
+.message text {
+  max-width: 78%;
+  padding: 14rpx 18rpx;
+  border-radius: 8rpx;
+  color: var(--text);
+  background: var(--hover);
+  font-size: 25rpx;
+  line-height: 1.55;
+}
+
+.message.mine {
+  justify-content: flex-end;
+}
+
+.message.mine text {
+  color: #ffffff;
+  background: var(--primary);
+}
+
+.composer {
+  display: flex;
+  gap: 12rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid var(--border);
+}
+
+.composer-input {
+  flex: 1;
+  min-height: 74rpx;
+}
+
+.send {
+  width: 130rpx;
+  min-height: 74rpx;
+  padding: 0;
+}
+
+.empty-thread {
+  padding: 100rpx 20rpx;
+  color: var(--muted);
+  text-align: center;
+}

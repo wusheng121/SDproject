@@ -1,0 +1,126 @@
+<view class="page publish-page theme-{{theme}}">
+  <view class="page-heading">
+    <text class="eyebrow">SELL SOMETHING GOOD</text>
+    <text class="page-title">{{editingId ? '编辑闲置' : '发布闲置'}}</text>
+    <text class="page-subtitle">把闲置交给下一个需要它的人。真实描述成色和瑕疵，更容易成交。</text>
+  </view>
+
+  <view wx:if="{{!loggedIn}}" class="card login-gate">
+    <text class="gate-title">登录后发布闲置</text>
+    <text class="muted">登录账号后即可上传图片、填写商品信息并提交审核。</text>
+    <button class="btn full gate-btn" bindtap="goLogin">登录 / 注册</button>
+  </view>
+
+  <view wx:else>
+    <view class="card image-section">
+      <view class="section-heading-inner">
+        <view>
+          <text class="eyebrow">01 / PHOTO</text>
+          <text class="form-title">商品主图</text>
+          <text class="form-note">支持拍照或从相册选择，图片大小不超过 4MB。</text>
+        </view>
+      </view>
+      <view wx:if="{{imagePreview}}" class="image-preview-wrap">
+        <image class="image-preview" src="{{imagePreview}}" mode="aspectFill"></image>
+        <view class="image-actions">
+          <button class="btn btn-plain btn-sm" bindtap="pickImage">更换图片</button>
+          <button class="btn btn-sm" loading="{{recognizing}}" bindtap="recognizeImage">AI 识图填充</button>
+        </view>
+      </view>
+      <view wx:else class="image-picker" bindtap="pickImage">
+        <text class="picker-plus">+</text>
+        <text class="picker-title">添加商品图片</text>
+        <text class="picker-note">也可以直接填写下方信息</text>
+      </view>
+      <view wx:if="{{!imagePreview}}" class="image-helper">
+        <button class="btn btn-plain btn-sm" loading="{{recognizing}}" bindtap="recognizeImage">拍照 AI 识别</button>
+        <text class="muted">AI 会根据图片尝试填写名称、分类和成色。</text>
+      </view>
+      <view wx:if="{{aiTags.category || aiTags.condition}}" class="ai-tags">
+        <text class="ai-label">AI 标签</text>
+        <text wx:if="{{aiTags.category}}" class="tag">{{aiTags.category}}</text>
+        <text wx:if="{{aiTags.condition}}" class="tag">{{aiTags.condition}}</text>
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="section-heading-inner">
+        <view>
+          <text class="eyebrow">02 / PRODUCT</text>
+          <text class="form-title">商品信息</text>
+          <text class="form-note">名称、分类、成色和使用情况越完整，越容易成交。</text>
+        </view>
+      </view>
+      <view class="field">
+        <text class="label">商品名称</text>
+        <input class="input" maxlength="80" value="{{form.name}}" data-field="name" bindinput="onInput" placeholder="例如：小米 13 256G" />
+      </view>
+      <view class="two-columns">
+        <view class="field">
+          <text class="label">商品分类</text>
+          <picker range="{{categories}}" bindchange="chooseCategory">
+            <view class="picker-field">{{form.category || '请选择分类'}}</view>
+          </picker>
+        </view>
+        <view class="field">
+          <text class="label">品牌</text>
+          <input class="input" maxlength="100" value="{{form.brand}}" data-field="brand" bindinput="onInput" placeholder="例如：小米、无印良品" />
+        </view>
+      </view>
+      <view class="field">
+        <text class="label">商品成色</text>
+        <picker range="{{conditions}}" bindchange="chooseCondition">
+          <view class="picker-field">{{form.condition || '请选择成色'}}</view>
+        </picker>
+      </view>
+      <view class="field">
+        <text class="label">商品描述</text>
+        <textarea class="textarea" maxlength="1000" value="{{form.description}}" data-field="description" bindinput="onInput" placeholder="介绍购买时间、使用情况、配件情况等"></textarea>
+      </view>
+      <view class="field">
+        <text class="label">瑕疵说明（选填）</text>
+        <input class="input" maxlength="500" value="{{form.defect_description}}" data-field="defect_description" bindinput="onInput" placeholder="例如：边角有轻微磨损，无功能问题" />
+      </view>
+    </view>
+
+    <view class="card">
+      <view class="section-heading-inner">
+        <view>
+          <text class="eyebrow">03 / PRICE</text>
+          <text class="form-title">价格与交易</text>
+          <text class="form-note">参考同品类成交区间，再决定你的售价。</text>
+        </view>
+      </view>
+      <view class="field">
+        <text class="label">出售价格（元）</text>
+        <input class="input" type="digit" value="{{form.price}}" data-field="price" bindinput="onInput" placeholder="请输入售价" />
+      </view>
+      <view class="price-reference">
+        <view class="row between">
+          <text class="reference-title">同品类成交参考</text>
+          <text wx:if="{{priceReference && priceReference.sample_count}}" class="muted">{{priceReference.sample_count}} 笔</text>
+        </view>
+        <text wx:if="{{priceReference && priceReference.sample_count}}" class="reference-text">成交价 ¥{{priceReference.min_price}} - ¥{{priceReference.max_price}}</text>
+        <text wx:elif="{{priceReference}}" class="reference-text">暂无该品类成交记录，可按自己的心理价填写。</text>
+        <text wx:else class="reference-text">选择分类后可查看同品类参考成交价。</text>
+        <button class="btn btn-plain btn-sm reference-btn" loading="{{loadingPrice}}" bindtap="loadPriceReference">查询价格参考</button>
+      </view>
+      <view class="field">
+        <text class="label">交易方式</text>
+        <picker range="{{tradeMethods}}" bindchange="chooseTradeMethod">
+          <view class="picker-field">{{form.trade_method || '请选择交易方式'}}</view>
+        </picker>
+      </view>
+      <view class="field">
+        <text class="label">交易地点（选填）</text>
+        <input class="input" maxlength="200" value="{{form.trade_location}}" data-field="trade_location" bindinput="onInput" placeholder="例如：校门口、图书馆附近" />
+      </view>
+    </view>
+
+    <view class="submit-bar">
+      <button class="btn btn-plain cancel-btn" bindtap="cancel">取消</button>
+      <button wx:if="{{editingId}}" class="btn btn-danger remove-btn" bindtap="remove">删除</button>
+      <button class="btn submit-btn" loading="{{submitting}}" bindtap="submit">{{editingId ? '保存修改' : '提交审核'}}</button>
+    </view>
+  </view>
+</view>

@@ -1,0 +1,30 @@
+<view class="page cart-page theme-{{theme}}">
+  <view class="page-heading">
+    <text class="eyebrow">YOUR BAG</text>
+    <text class="page-title">购物车</text>
+    <text class="page-subtitle">确认商品状态和价格后，再一起创建订单。</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="empty">正在加载...</view>
+  <view wx:elif="{{items.length === 0}}" class="empty">购物车还是空的</view>
+  <view wx:else>
+    <view wx:for="{{items}}" wx:key="id" class="cart-item" data-id="{{item.product_id}}" bindtap="openProduct">
+      <image wx:if="{{item.image_url}}" class="cart-thumb" src="{{item.image_url}}" mode="aspectFill"></image>
+      <view wx:else class="cart-thumb placeholder">商品图片</view>
+      <view class="cart-info">
+        <text class="cart-name line-clamp">{{item.name}}</text>
+        <text class="muted">{{item.condition}}</text>
+        <text class="price cart-price">¥{{item.price}}</text>
+      </view>
+      <button class="remove" data-id="{{item.product_id}}" catchtap="remove">移除</button>
+    </view>
+
+    <view class="checkout-bar">
+      <view class="total-copy">
+        <text class="muted">合计</text>
+        <text class="price total">¥{{total}}</text>
+      </view>
+      <button class="btn checkout" bindtap="checkout">创建订单</button>
+    </view>
+  </view>
+</view>

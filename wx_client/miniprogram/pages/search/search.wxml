@@ -1,0 +1,44 @@
+<view class="page search-page theme-{{theme}}">
+  <view class="page-heading">
+    <text class="eyebrow">FIND SOMETHING GOOD</text>
+    <text class="page-title">搜索商品</text>
+    <text class="page-subtitle">按关键词、分类、价格和成色筛选校园好物。</text>
+  </view>
+
+  <view class="filter-card">
+    <input class="input keyword" value="{{keyword}}" data-field="keyword" bindinput="onInput" placeholder="输入商品名称、品牌或关键词" />
+    <view class="filter-grid">
+      <picker range="{{categories}}" bindchange="chooseCategory">
+        <view class="picker-field">{{category || '全部品类'}}</view>
+      </picker>
+      <input class="input" type="digit" value="{{minPrice}}" data-field="minPrice" bindinput="onInput" placeholder="最低价" />
+      <input class="input" type="digit" value="{{maxPrice}}" data-field="maxPrice" bindinput="onInput" placeholder="最高价" />
+      <input class="input" value="{{condition}}" data-field="condition" bindinput="onInput" placeholder="最低成色" />
+    </view>
+    <view class="ai-actions">
+      <button class="btn btn-plain btn-sm ai-btn" loading="{{parsing}}" bindtap="aiParse">AI 解析筛选</button>
+      <button class="btn btn-plain btn-sm ai-btn" loading="{{recognizing}}" bindtap="aiImageSearch">AI 识图搜索</button>
+    </view>
+    <button class="btn search-btn" loading="{{loading}}" bindtap="search">搜索商品</button>
+  </view>
+
+  <view class="results-heading">
+    <view>
+      <text class="eyebrow">RESULTS</text>
+      <text class="section-title">{{searched ? '搜索结果' : '等待搜索'}}</text>
+    </view>
+    <text class="results-count">{{products.length}} 件</text>
+  </view>
+
+  <view wx:if="{{searched && !loading && products.length === 0}}" class="empty">
+    <text>没有找到符合条件的商品</text>
+    <button class="btn btn-plain ai-empty-btn" bindtap="openAssistant">问 AI 帮我找</button>
+  </view>
+  <view wx:else class="product-grid">
+    <view wx:for="{{products}}" wx:key="id" class="product-cell">
+      <product-card class="product-card-host" product="{{item}}" bind:open="openProduct" />
+    </view>
+  </view>
+  <view wx:if="{{loadingMore}}" class="list-end">正在加载更多...</view>
+  <view wx:elif="{{searched && !hasMore && products.length}}" class="list-end">已经到底了</view>
+</view>

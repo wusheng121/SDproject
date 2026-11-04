@@ -1,0 +1,99 @@
+<view class="page home-page theme-{{theme}}">
+  <view class="marketplace-hero">
+    <text class="hero-eyebrow">CAMPUS MARKETPLACE</text>
+    <text class="hero-title">在校园里，找到<text class="hero-accent">下一个需要的伙伴</text></text>
+    <text class="hero-description">教材、数码、生活用品、运动装备。校内交易更简单，也更安心。</text>
+    <view class="hero-actions">
+      <button class="hero-primary" bindtap="openSearch">开始逛商品</button>
+      <button class="hero-secondary" bindtap="openPublish">发布闲置</button>
+    </view>
+    <view class="hero-panel">
+      <text class="panel-label">校园好物</text>
+      <text class="panel-number">{{totalProducts}}</text>
+      <text class="panel-caption">件商品正在寻找新的主人</text>
+      <view class="panel-divider"></view>
+      <view class="panel-row"><text>热门品类</text><text>教材 · 数码 · 生活</text></view>
+      <view class="panel-row"><text>交易方式</text><text>校内面交 · 当面验货</text></view>
+    </view>
+  </view>
+
+  <view class="search-sticky">
+    <view class="search-row">
+      <view class="search-bar" bindtap="openSearch">
+        <text class="search-hint">搜索教材、数码、生活用品</text>
+        <text class="search-action">搜索</text>
+      </view>
+      <button class="ai-entry" bindtap="openAssistant">AI 问</button>
+    </view>
+  </view>
+
+  <view class="section-heading compact">
+    <view>
+      <text class="eyebrow">BROWSE BY CATEGORY</text>
+      <text class="section-title">商品分类</text>
+    </view>
+    <text class="text-action" bindtap="openSearch">查看全部</text>
+  </view>
+
+  <view class="category-grid">
+    <view class="category-tile {{activeCategory === '' ? 'active' : ''}}" data-category="" bindtap="chooseCategory">
+      <text class="category-icon">全</text>
+      <text class="category-name">全部</text>
+      <text class="category-note">全部好物</text>
+    </view>
+    <view
+      wx:for="{{quickCategories}}"
+      wx:key="name"
+      class="category-tile {{activeCategory === item.name ? 'active' : ''}}"
+      data-category="{{item.name}}"
+      bindtap="chooseCategory"
+    >
+      <text class="category-icon">{{item.short}}</text>
+      <text class="category-name">{{item.name}}</text>
+      <text class="category-note">{{item.note}}</text>
+    </view>
+  </view>
+
+  <block wx:if="{{loggedIn}}">
+    <view class="section-heading">
+      <view>
+        <text class="eyebrow">PERSONAL PICKS</text>
+        <text class="section-title">为你推荐</text>
+        <text class="section-note">{{recommendationMeta.strategy_name ? recommendationMeta.strategy_name : '根据你的收藏和浏览记录生成'}}</text>
+      </view>
+      <button class="text-action" loading="{{recommendationLoading}}" bindtap="refreshRecommendations">换一批</button>
+    </view>
+    <view wx:if="{{recommendationLoading}}" class="empty">正在生成推荐...</view>
+    <view wx:elif="{{recommendations.length}}" class="product-grid">
+      <view wx:for="{{recommendations}}" wx:key="id" class="product-cell">
+        <product-card class="product-card-host" product="{{item}}" bind:open="openProduct" />
+      </view>
+    </view>
+    <view wx:else class="empty">暂时没有个性化推荐，先去逛逛吧</view>
+  </block>
+
+  <view class="section-heading">
+    <view>
+      <text class="eyebrow">TRENDING NOW</text>
+      <text class="section-title">{{activeCategory || '校园正在热卖'}}</text>
+      <text class="section-note">同学们最近关注的好物，先到先得。</text>
+    </view>
+    <text class="section-count">{{products.length}} 件</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="empty">正在加载...</view>
+  <view wx:elif="{{products.length === 0}}" class="empty">暂时没有商品</view>
+  <view wx:else class="product-grid">
+    <view wx:for="{{products}}" wx:key="id" class="product-cell">
+      <product-card class="product-card-host" product="{{item}}" bind:open="openProduct" />
+    </view>
+  </view>
+  <view wx:if="{{loadingMore}}" class="list-end">正在加载更多...</view>
+  <view wx:elif="{{!hasMore && products.length}}" class="list-end">已经到底了</view>
+
+  <view class="trust-strip">
+    <view><text class="trust-title">校内交易</text><text class="trust-note">面对面沟通，商品状态更清楚</text></view>
+    <view><text class="trust-title">信息透明</text><text class="trust-note">价格、成色、瑕疵完整展示</text></view>
+    <view><text class="trust-title">按需推荐</text><text class="trust-note">发现适合你的校园好物</text></view>
+  </view>
+</view>

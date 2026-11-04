@@ -1,0 +1,83 @@
+.settings-page {
+  padding-top: 24rpx;
+}
+
+.block-title {
+  display: block;
+  margin-bottom: 18rpx;
+  color: var(--text);
+  font-size: 32rpx;
+  font-weight: 700;
+}
+
+.readonly-field {
+  min-height: 82rpx;
+  padding: 0 22rpx;
+  border: 1rpx solid var(--border);
+  border-radius: 8rpx;
+  color: var(--muted);
+  background: var(--hover);
+  font-size: 26rpx;
+  line-height: 82rpx;
+}
+
+.form-note {
+  display: block;
+  margin-bottom: 18rpx;
+  color: var(--muted);
+  font-size: 22rpx;
+  line-height: 1.6;
+}
+
+.card > .btn {
+  width: 100%;
+}
+
+.preference-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.preference-item {
+  display: flex;
+  width: calc(50% - 6rpx);
+  min-height: 76rpx;
+  align-items: center;
+  gap: 10rpx;
+  padding: 0 16rpx;
+  border: 1rpx solid var(--border);
+  border-radius: 6rpx;
+  color: var(--text);
+  background: var(--card);
+  font-size: 23rpx;
+}
+
+.preference-item.selected {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--hover);
+}
+
+.preference-check {
+  width: 26rpx;
+  color: var(--primary);
+  font-size: 22rpx;
+  font-weight: 700;
+}
+
+.preference-save {
+  margin-top: 20rpx;
+}
+
+.danger-card {
+  border-color: var(--border);
+}
+
+.close-btn {
+  width: 100%;
+}
+
+.danger-card .block-title {
+  color: var(--danger);
+}
