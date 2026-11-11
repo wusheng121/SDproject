@@ -2,6 +2,8 @@
 
 import re
 
+from services.category_aliases import resolve_category
+
 CONDITIONS = ("九五新", "九成新", "八成新", "七成新", "全新")
 
 
@@ -37,10 +39,9 @@ def parse_nl(text: str, category_names: list[str]) -> dict:
             slots["min_condition"] = condition
             break
 
-    for name in sorted((name for name in category_names if name), key=len, reverse=True):
-        if name in raw:
-            slots["category"] = name
-            break
+    category = resolve_category(raw, category_names)
+    if category:
+        slots["category"] = category
 
     keyword = raw
     for piece in (slots["category"], slots["min_condition"], "元以内", "元内", "元以上", "不超过"):

@@ -35,7 +35,13 @@
 ## 二、启动
 
 ```powershell
-docker compose up -d rabbitmq elasticsearch
+docker compose up -d redis rabbitmq elasticsearch
+```
+
+Redis 宿主机端口为 `16379`，容器内部为 `6379`。旧版 `6379` 映射需要重建容器：
+
+```powershell
+docker compose up -d --force-recreate redis
 ```
 
 当前 Docker Hub 直连受限时，RabbitMQ 可使用 DaoCloud 镜像：
@@ -67,7 +73,7 @@ java -jar target/market-server-0.1.0.jar
 ```text
 RabbitMQ 5672 / 15672   运行
 Elasticsearch 9200      运行
-Redis 6379              运行
+Redis 16379（宿主）/ 6379（容器） 运行
 campus.product.cache    durable=true, consumers=1
 campus-products         docs=45
 ```

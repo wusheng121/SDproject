@@ -6,6 +6,7 @@ import re
 import secrets
 
 from models import AgentDialogue, Category, Product, ProductCategory
+from services.category_aliases import resolve_category
 from services.deepseek_client import DeepSeekError, api_key, complete
 from utils.serializers import product_public
 
@@ -269,12 +270,9 @@ def _extract(text: str, slots: dict) -> tuple[dict, str]:
             break
 
     names = [row.name for row in Category.query.all()]
-    mentioned = None
-    for name in sorted(names, key=len, reverse=True):
-        if name and name in text:
-            mentioned = name
-            updated["category"] = name
-            break
+    mentioned = resolve_category(text, names)
+    if mentioned:
+        updated["category"] = mentioned
 
     if any(word in text for word in CHEAPER_WORDS):
         current = updated.get("max_price")
@@ -319,7 +317,7 @@ def _recommend(slots: dict) -> list[Product]:
     return (
         Product.query.filter(Product.status == "approved")
         .order_by(Product.created_at.desc())
-        .limit(3)
+        .limit(12)
         .all()
     )
 
@@ -407,6 +405,8 @@ def _model_messages(text: str, slots: dict, items: list, recognition: dict | Non
         "不要编造列表之外的名称、价格或库存。你可以回答商品是否适合某个用途，"
         "但要说明依据是列表里的哪一件。你不能删除、改价、下单、支付或封禁，"
         "也不要声称已经做了这些操作。用简短中文回答。\n"
+        "当前记住的条件来自多轮对话，已经生效；不要声称用户没有提供这些条件。\n"
+        "如果当前商品列表为空，只能说当前条件下没有找到，不能推断平台没有这个品类。\n"
         f"当前记住的条件：{heard}。\n"
         f"{seen}"
         f"在售商品：\n{_catalog(items)}"

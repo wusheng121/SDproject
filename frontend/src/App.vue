@@ -1,4 +1,5 @@
 <template>
+  <el-config-provider :message="{ offset: 96 }">
   <div class="app-container">
     <header class="app-header">
       <div class="header-content">
@@ -64,6 +65,7 @@
       </div>
     </footer>
   </div>
+  </el-config-provider>
 </template>
 
 <script setup>
