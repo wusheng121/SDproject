@@ -17,13 +17,34 @@ import org.springframework.stereotype.Component;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Component
 public class ProductSearchIndex {
     private static final Logger log = LoggerFactory.getLogger(ProductSearchIndex.class);
     private static final String INDEX = "campus-products";
+    private static final List<String[]> SEARCH_ALIASES = List.of(
+            new String[]{"保温水杯", "保温杯"},
+            new String[]{"保温杯", "保温杯"},
+            new String[]{"水杯", "保温杯"},
+            new String[]{"杯子", "保温杯"},
+            new String[]{"水壶", "保温杯"},
+            new String[]{"书籍", "书籍"},
+            new String[]{"教材", "书籍"},
+            new String[]{"课本", "书籍"},
+            new String[]{"书", "书籍"},
+            new String[]{"智能手机", "手机"},
+            new String[]{"电话", "手机"},
+            new String[]{"手机", "手机"},
+            new String[]{"单车", "自行车"},
+            new String[]{"山地车", "自行车"},
+            new String[]{"自行车", "自行车"},
+            new String[]{"运动鞋", "运动鞋"},
+            new String[]{"跑鞋", "运动鞋"}
+    );
     private final String url;
     private final MarketStore store;
     private final ObjectMapper json = new ObjectMapper();
@@ -49,8 +70,9 @@ public class ProductSearchIndex {
                     "size", 50,
                     "query", Map.of("bool", Map.of(
                             "must", List.of(Map.of("multi_match", Map.of(
-                                    "query", keyword,
-                                    "fields", List.of("name^3", "categories^2", "description")))),
+                                    "query", expandKeyword(keyword),
+                                    "fields", List.of("name^3", "categories^2", "description"),
+                                    "fuzziness", "AUTO"))),
                             "filter", List.of(Map.of("term", Map.of("status", "approved"))))));
             JsonNode hits = perform("POST", "/" + INDEX + "/_search", body).path("hits").path("hits");
             List<Long> ids = new ArrayList<>();
@@ -64,6 +86,18 @@ public class ProductSearchIndex {
             markDown("关键词搜索");
             return null;
         }
+    }
+
+    private static String expandKeyword(String keyword) {
+        String text = keyword == null ? "" : keyword.trim();
+        Set<String> terms = new LinkedHashSet<>();
+        terms.add(text);
+        for (String[] pair : SEARCH_ALIASES) {
+            if (text.contains(pair[0])) {
+                terms.add(pair[1]);
+            }
+        }
+        return String.join(" ", terms);
     }
 
     public void sync(long productId) {

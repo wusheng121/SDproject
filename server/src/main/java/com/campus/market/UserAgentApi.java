@@ -65,7 +65,9 @@ public class UserAgentApi {
         boolean compareIntent = contains(message, "对比", "比较", "哪个好", "性价比");
         boolean cartIntent = contains(message, "加购物车", "加入购物车", "加购");
         boolean contactIntent = contains(message, "问卖家", "问一下", "帮我问", "帮问", "咨询", "联系卖家", "发消息");
-        boolean reference = contains(message, "这个", "它", "刚才", "上面", "之前", "链接") || !linked.isEmpty();
+        boolean reference = contains(message, "这个", "它", "刚才", "上面", "之前", "链接",
+                "这两个", "这两件", "这2个", "这2件", "刚才两个", "刚才两件",
+                "上面两个", "上面两件") || !linked.isEmpty();
         String intent = intentOf(message);
 
         List<Long> active = new ArrayList<>();
@@ -84,12 +86,20 @@ public class UserAgentApi {
         String script = "";
         List<Map<String, Object>> actions = new ArrayList<>();
         Long primary = active.isEmpty() ? null : active.get(0);
+        Long referencedTarget = active.isEmpty() ? null : resolveTarget(message, active);
+        if (referencedTarget != null) {
+            primary = referencedTarget;
+        }
 
         Long actionTarget = null;
+        boolean needsTarget = false;
         if ((cartIntent || contactIntent) && !active.isEmpty()) {
             actionTarget = resolveTarget(message, active);
-            if (actionTarget == null && (active.size() == 1 || contactIntent)) {
+            if (actionTarget == null && active.size() == 1) {
                 actionTarget = active.get(0);
+            }
+            if (actionTarget == null && active.size() > 1) {
+                needsTarget = true;
             }
             if (actionTarget != null) {
                 if (!active.contains(actionTarget)) {
@@ -99,7 +109,7 @@ public class UserAgentApi {
             }
         }
 
-        if (primary != null && !cartIntent) {
+        if (primary != null && !cartIntent && !compareIntent) {
             advice = agentApi.executeSkill("product_advice", Map.of("product_id", primary), userId);
             questions = strings(advice.get("questions"));
             script = MarketStore.str(advice.get("script"));
@@ -108,9 +118,10 @@ public class UserAgentApi {
             advice = null;
         }
 
+        boolean compareNeedsTarget = false;
         if (compareIntent) {
             List<Long> compareIds = new ArrayList<>(reference ? active : List.of());
-            if (compareIds.size() < 2) {
+            if (compareIds.size() < 2 && !reference) {
                 Map<String, Object> search = agentApi.executeSkill("nl_filter", Map.of("text", message), userId);
                 for (Object item : list(search.get("items"))) {
                     Map<String, Object> row = map(item);
@@ -126,10 +137,14 @@ public class UserAgentApi {
                 }
             }
             if (compareIds.size() >= 2) {
+                boolean twoOnly = contains(message, "这两个", "这两件", "这2个", "这2件");
+                int limit = Math.min(compareIds.size(), twoOnly ? 2 : 3);
                 comparison = agentApi.executeSkill("product_compare",
-                        Map.of("product_ids", compareIds.subList(0, Math.min(compareIds.size(), 3))), userId);
+                        Map.of("product_ids", compareIds.subList(0, limit)), userId);
                 active.clear();
                 active.addAll(compareIds.stream().distinct().limit(5).toList());
+            } else if (reference) {
+                compareNeedsTarget = true;
             }
         }
 
@@ -141,8 +156,12 @@ public class UserAgentApi {
                     .map(MarketStore::num)
                     .distinct()
                     .toList();
+        } else if (needsTarget) {
+            // 保留全部候选，便于用户选择第一件/第二件。
         } else if ((cartIntent || contactIntent) && actionTarget != null) {
             displayIds = List.of(actionTarget);
+        } else if (primary != null) {
+            displayIds = List.of(primary);
         }
         for (Long id : displayIds.stream().limit(5).toList()) {
             Map<String, Object> detail = agentApi.executeSkill("product_detail", Map.of("product_id", id), userId);
@@ -161,7 +180,11 @@ public class UserAgentApi {
             actions.add(proposal(userId, sessionId, "seller_message", payload, traceId, planId));
         }
 
-        String reply = reply(intent, products, advice, comparison, actions);
+        String reply = needsTarget
+                ? "当前有多个候选商品，请明确要操作哪一件：可以说“第一件”“第二件”或商品名称。"
+                : compareNeedsTarget
+                ? "至少需要两件商品才能对比。请再提供一件商品，或直接发两个商品链接。"
+                : reply(intent, products, advice, comparison, actions);
         long assistantMessageId = insertMessage(sessionId, "assistant", reply, traceId);
         for (Map<String, Object> action : actions) {
             jdbc.update("UPDATE pending_actions SET message_id = ?, plan_id = ? WHERE id = ?",

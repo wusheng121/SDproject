@@ -156,6 +156,15 @@ public class UnifiedAssistantApi {
         if (data.get("slots") instanceof Map<?, ?> slots) {
             next.put("slots", slots);
         }
+        if (data.get("items") instanceof List<?> items) {
+            List<Long> productIds = new ArrayList<>();
+            for (Object item : items) {
+                if (item instanceof Map<?, ?> row && row.get("id") != null) {
+                    productIds.add(MarketStore.num(row.get("id")));
+                }
+            }
+            next.put("product_ids", productIds.stream().distinct().limit(8).toList());
+        }
         updateContext(sessionId, next);
         return Map.of("data", data);
     }

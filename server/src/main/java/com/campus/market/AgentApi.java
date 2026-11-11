@@ -20,6 +20,25 @@ import java.util.Map;
 @RestController
 public class AgentApi {
     private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final List<String[]> CATEGORY_ALIASES = List.of(
+            new String[]{"保温水杯", "保温杯"},
+            new String[]{"保温杯", "保温杯"},
+            new String[]{"水杯", "保温杯"},
+            new String[]{"杯子", "保温杯"},
+            new String[]{"水壶", "保温杯"},
+            new String[]{"书籍", "书籍"},
+            new String[]{"教材", "书籍"},
+            new String[]{"课本", "书籍"},
+            new String[]{"书", "书籍"},
+            new String[]{"智能手机", "手机"},
+            new String[]{"电话", "手机"},
+            new String[]{"手机", "手机"},
+            new String[]{"单车", "自行车"},
+            new String[]{"山地车", "自行车"},
+            new String[]{"自行车", "自行车"},
+            new String[]{"运动鞋", "运动鞋"},
+            new String[]{"跑鞋", "运动鞋"}
+    );
     private final JdbcTemplate jdbc;
     private final MarketStore store;
     private final CampusProperties properties;
@@ -323,9 +342,7 @@ public class AgentApi {
         String category = MarketStore.str(params.get("category"));
         String condition = MarketStore.str(params.get("condition"));
         if ("nl_filter".equals(skill) && !text.isBlank()) {
-            if (category.isBlank()) {
-                category = firstContained(text, store.allCategories());
-            }
+            category = resolveCategory(text, category);
             if (condition.isBlank()) {
                 condition = firstContained(text, List.of("全新", "九五新", "九成新", "八成新", "七成新"));
             }
@@ -339,6 +356,23 @@ public class AgentApi {
             items.add(store.productView(row, false));
         }
         return items;
+    }
+
+    private String resolveCategory(String text, String explicit) {
+        if (!explicit.isBlank()) {
+            for (String[] pair : CATEGORY_ALIASES) {
+                if (explicit.equals(pair[0])) {
+                    return pair[1];
+                }
+            }
+            return explicit;
+        }
+        for (String[] pair : CATEGORY_ALIASES) {
+            if (text.contains(pair[0])) {
+                return pair[1];
+            }
+        }
+        return firstContained(text, store.allCategories());
     }
 
     private Map<String, Object> requireKey(HttpServletRequest request, String scope) {

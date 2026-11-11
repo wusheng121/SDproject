@@ -16,7 +16,7 @@ public class CampusProperties {
     private int bcryptCost = 12;
     private String phoneEncKey = "";
     private String phoneHashKey = "";
-    private String redisUrl = "redis://127.0.0.1:6379/0";
+    private String redisUrl = "redis://127.0.0.1:16379/0";
     private String elasticsearchUrl = "http://127.0.0.1:9200";
     private int cacheLocalTtlSeconds = 20;
     private int cacheRedisTtlSeconds = 120;

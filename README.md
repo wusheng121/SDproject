@@ -25,7 +25,9 @@ docs/          项目文档
 | 服务 | 端口 |
 |---|---:|
 | MySQL | 3407 |
-| Redis | 6379 |
+| Redis（宿主机） | 16379 |
+
+> Redis 容器内部仍使用 `6379`，宿主机映射到 `16379`，避免落入 Windows 动态保留端口范围。本地 Python/Java 连接 `127.0.0.1:16379`。
 | RabbitMQ | 5672 |
 | RabbitMQ 管理台 | 15672 |
 | Elasticsearch | 9200 |
@@ -103,6 +105,12 @@ docker compose up -d redis rabbitmq elasticsearch
 docker compose ps
 ```
 
+如果你之前运行过旧版 Compose（Redis 映射为 `6379`），需要先重建 Redis 容器使新端口生效：
+
+```powershell
+docker compose up -d --force-recreate redis
+```
+
 不要同时启动 Compose 里的 MySQL，避免和本地 3407 实例冲突。
 
 ### 3. 安装依赖
@@ -149,7 +157,7 @@ Copy-Item backend\.env.example backend\.env
 
 ```text
 DATABASE_URL=mysql+pymysql://campus:campus@127.0.0.1:3407/campus_market?charset=utf8mb4
-REDIS_URL=redis://127.0.0.1:6379/0
+REDIS_URL=redis://127.0.0.1:16379/0
 SECRET_KEY=至少32字节的随机字符串
 ```
 
@@ -281,6 +289,14 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-mysql.ps1
 docker compose up -d redis rabbitmq elasticsearch
 ```
 
+如果 Redis 容器是旧版 `6379` 映射，使用：
+
+```powershell
+docker compose up -d --force-recreate redis
+```
+
+Redis 宿主机端口为 `16379`，容器内部仍为 `6379`。
+
 ### 3. 启动 Python
 
 ```powershell
@@ -355,7 +371,7 @@ Get-NetTCPConnection -LocalPort 3407 -State Listen
 ### 检查所有服务端口
 
 ```powershell
-foreach ($port in 3407,6379,5672,9200,8080,5001,5173) {
+foreach ($port in 3407,16379,5672,9200,8080,5001,5173) {
   $conn = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
   if ($conn) { "$port = running" } else { "$port = stopped" }
 }
